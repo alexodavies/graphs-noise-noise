@@ -7,7 +7,7 @@ datasets=(
     "ogbg-molbace"
     "ogbg-molbbbp"
     "ogbg-molclintox"
-    "ogbg-molmuv"
+    # "ogbg-molmuv"
     "ogbg-molsider"
     "ogbg-mollipo"
     "ogbg-molfreesolv"
