@@ -162,7 +162,7 @@ def train_and_evaluate(dataset, test_dataset, layer_type, hidden_dim, num_layers
 
     metric = "ROC-AUC" if task_type == "classification" else "RMSE"
 
-    return test_performance
+    return test_performance, task_type
 
 
 def evaluate_main(dataset="ogbg-molclintox",
@@ -191,7 +191,7 @@ def evaluate_main(dataset="ogbg-molclintox",
 
     # Train and evaluate
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    score = train_and_evaluate(
+    score, task_type = train_and_evaluate(
         dataset=train_dataset,
         test_dataset=test_dataset,
         layer_type=layer_type,
@@ -205,7 +205,7 @@ def evaluate_main(dataset="ogbg-molclintox",
         device=device
     )
 
-    return score
+    return score, task_type
 
 
 if __name__ == "__main__":

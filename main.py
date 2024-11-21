@@ -46,9 +46,9 @@ def evaluate_dataset(dataset, n_noise_levels=10, n_repeats=5):
         ti_performances_feature = []
         repeat_pbar = tqdm(range(n_repeats), desc="Running repeats", leave=False)
         for i_repeat in repeat_pbar:
-            struc = evaluate_main(dataset=dataset, t_structure=ts[ti])
+            struc, tt = evaluate_main(dataset=dataset, t_structure=ts[ti])
             ti_performances_structure.append(struc)
-            feat = evaluate_main(dataset=dataset, t_feature=ts[ti])
+            feat, tt = evaluate_main(dataset=dataset, t_feature=ts[ti])
             ti_performances_feature.append(feat)
             pbar_string = f"Struc: {struc}, feat: {feat}"
             repeat_pbar.set_postfix_str(pbar_string)
@@ -67,6 +67,7 @@ def evaluate_dataset(dataset, n_noise_levels=10, n_repeats=5):
 
     result_dict["structure"] = structure_performances
     result_dict["feature"] = feature_performances
+    result_dict["task_type"] = tt
 
     save_run(result_dict)
     wandb.finish()
