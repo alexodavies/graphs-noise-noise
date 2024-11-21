@@ -3,7 +3,7 @@
 # Define the list of OGB graph-level datasets
 datasets=(
     "ogbg-moltox21"
-    "ogbg-moltoxcast"
+    # "ogbg-moltoxcast"
     "ogbg-molbace"
     "ogbg-molbbbp"
     "ogbg-molclintox"
@@ -12,8 +12,8 @@ datasets=(
     "ogbg-mollipo"
     "ogbg-molfreesolv"
     "ogbg-molesol"
-    "ogbg-molhiv"
-    "ogbg-molpcba"
+    # "ogbg-molhiv"
+    # "ogbg-molpcba"
 )
 
 # Set default values for noise levels and repeats
