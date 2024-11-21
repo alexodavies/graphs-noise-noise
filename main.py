@@ -1,30 +1,42 @@
 import os
 import warnings
 import argparse
-from tqdm import tqdm
 import json
 import numpy as np
+from tqdm import tqdm
 from functions import evaluate_main
+import wandb
 
 # Torch geometric produces future warnings with current version of OGB
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # Function to save experiment runs
 def save_run(performance_dict):
-    # performance dict should have keys:
-    # - dataset
-    # - structure: {0:[1, 2, 3, ... , n_repeats], 1:[], 2:[],...}
-    # - feature: {0:[], 1:[], 2:[],...}
-
     if "results" not in os.listdir():
         os.mkdir("results")
 
-    with open(f"results/{performance_dict['dataset']}.json", "w") as f:
+    # Save locally
+    json_path = f"results/{performance_dict['dataset']}.json"
+    with open(json_path, "w") as f:
         json.dump(performance_dict, f)
 
-def evaluate_dataset(dataset, n_noise_levels=10, n_repeats=5):
-    result_dict = {"dataset": dataset}
+    # # Log to wandb
+    # wandb.save(json_path)
+    # wandb.log({"performance_json": wandb.Artifact(
+    #     f"{performance_dict['dataset']}_results", type="dataset",
+    #     description="Results JSON", metadata=performance_dict
+    # )})
 
+def evaluate_dataset(dataset, n_noise_levels=10, n_repeats=5):
+    wandb.init(project="graph-level-evaluation",
+               name=dataset,
+                 config={
+        "dataset": dataset,
+        "n_noise_levels": n_noise_levels,
+        "n_repeats": n_repeats,
+    })
+
+    result_dict = {"dataset": dataset}
     structure_performances = dict()
     feature_performances = dict()
     ts = np.linspace(0, 1, n_noise_levels)
@@ -40,12 +52,24 @@ def evaluate_dataset(dataset, n_noise_levels=10, n_repeats=5):
             ti_performances_feature.append(feat)
             pbar_string = f"Struc: {struc}, feat: {feat}"
             repeat_pbar.set_postfix_str(pbar_string)
-        structure_performances[ts[ti]] = ti_performances_structure
-        feature_performances[ts[ti]] = ti_performances_feature
+
+        # Log intermediate results to wandb
+        wandb.log({
+            "noise_level": ts[ti],
+            "structure_performance": np.mean(ti_performances_structure),
+            "feature_performance": np.mean(ti_performances_feature),
+        })
+
+        structure_performances[ts[ti]] = [str(s) for s in ti_performances_structure]
+        feature_performances[ts[ti]] = [str(f) for f in ti_performances_feature]
+
+
 
     result_dict["structure"] = structure_performances
     result_dict["feature"] = feature_performances
+
     save_run(result_dict)
+    wandb.finish()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate dataset with noise and repeats")

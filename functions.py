@@ -95,7 +95,7 @@ def evaluate(model, loader, device, task_type):
                     elif task_type == "regression":
                         preds = out[valid_mask, task_idx].cpu().numpy()
                         labels = data.y[valid_mask, task_idx].cpu().numpy()
-                        score = root_mean_squared_error(labels, preds, squared=False)  # RMSE
+                        score = root_mean_squared_error(labels, preds)  # RMSE
                         task_scores.append(score)
     mean_score = np.mean(task_scores)
     # Average metric across tasks
