@@ -2,7 +2,7 @@
 
 # Define the list of OGB graph-level datasets
 datasets=(
-    "ogbg-moltox21"
+    # "ogbg-moltox21"
     # "ogbg-moltoxcast"
     "ogbg-molbace"
     "ogbg-molbbbp"
