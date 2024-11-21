@@ -4,9 +4,9 @@
 datasets=(
     # "ogbg-moltox21"
     # "ogbg-moltoxcast"
-    "ogbg-molbace"
-    "ogbg-molbbbp"
-    "ogbg-molclintox"
+    # "ogbg-molbace"
+    # "ogbg-molbbbp"
+    # "ogbg-molclintox"
     # "ogbg-molmuv"
     "ogbg-molsider"
     "ogbg-mollipo"
