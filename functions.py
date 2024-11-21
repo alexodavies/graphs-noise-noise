@@ -97,9 +97,9 @@ def evaluate(model, loader, device, task_type):
                         labels = data.y[valid_mask, task_idx].cpu().numpy()
                         score = root_mean_squared_error(labels, preds, squared=False)  # RMSE
                         task_scores.append(score)
-
+    mean_score = np.mean(task_scores)
     # Average metric across tasks
-    return np.mean(task_scores) if len(task_scores) > 0 else float("nan")
+    return mean_score
 
 
 
@@ -191,7 +191,7 @@ def evaluate_main(dataset="ogbg-molclintox",
 
     # Train and evaluate
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    train_and_evaluate(
+    score = train_and_evaluate(
         dataset=train_dataset,
         test_dataset=test_dataset,
         layer_type=layer_type,
@@ -204,6 +204,8 @@ def evaluate_main(dataset="ogbg-molclintox",
         t_feature=t_feature,
         device=device
     )
+
+    return score
 
 
 if __name__ == "__main__":
