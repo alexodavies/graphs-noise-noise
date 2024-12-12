@@ -1,6 +1,6 @@
 import torch
 from tqdm import tqdm
-from .feature_noise import add_continuous_feature_noise, add_discrete_feature_noise, shuffle_categorical_feature_noise, weighted_categorical_feature_noise, dataset_shuffle_feature_noise
+from .feature_noise import add_continuous_feature_noise, add_discrete_feature_noise, shuffle_categorical_feature_noise, weighted_categorical_feature_noise, dataset_shuffle_feature_noise, dataset_shuffle_node_feature_noise
 from .structure_noise import add_structure_noise
 
 def add_noise_to_graph(data, t_structure, t_feature):
@@ -17,7 +17,7 @@ def add_noise_to_dataset(dataset, t_structure, t_feature):
         noisy_data = add_noise_to_graph(data, t_structure, t_feature)
         noisy_dataset.append(noisy_data)
 
-    noisy_dataset = dataset_shuffle_feature_noise(noisy_dataset, t_feature)
+    noisy_dataset = dataset_shuffle_node_feature_noise(noisy_dataset, t_feature)
     
     return noisy_dataset
 

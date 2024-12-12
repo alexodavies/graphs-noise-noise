@@ -208,6 +208,74 @@ def dataset_shuffle_feature_noise(dataset, t):
 
     return dataset
 
+def dataset_shuffle_node_feature_noise(dataset, t):
+    """
+    Shuffles all features of a proportion of nodes across the entire dataset.
+    
+    Parameters:
+    - dataset: PyTorch Geometric data object containing node features (x) and edge attributes (edge_attr).
+    - t: Current time step in the diffusion process, normalized by total steps, i.e., range [0,1].
+    
+    Returns:
+    - Noisy dataset object with modified node features and edge attributes at time step t.
+    """
+    # Diffusion schedule: linearly increasing probability of shuffling as t increases
+    shuffle_prob = t  # Proportion of nodes to shuffle is directly proportional to t (range [0, 1])
+
+    has_x = dataset[0].x is not None
+    has_edge_attr = dataset[0].edge_attr is not None
+
+    if has_x:
+        # Collect all node features across the dataset
+        all_x = []
+        for data in dataset:
+            all_x.append(data.x)
+        all_x = torch.cat(all_x, dim=0)
+        
+        # Determine how many nodes to shuffle
+        num_nodes = all_x.size(0)
+        num_shuffled_nodes = int(shuffle_prob * num_nodes)
+        
+        # Select random nodes to shuffle
+        shuffle_indices = torch.randperm(num_nodes)[:num_shuffled_nodes]
+        
+        # Shuffle features of the selected nodes
+        shuffled_features = all_x[torch.randperm(num_nodes), :]
+        all_x[shuffle_indices] = shuffled_features[shuffle_indices]
+        
+        # Split the shuffled features back into each graph
+        start_idx = 0
+        for data in dataset:
+            end_idx = start_idx + data.x.size(0)
+            data.x = all_x[start_idx:end_idx]
+            start_idx = end_idx
+
+    if has_edge_attr:
+        # Collect all edge attributes across the dataset
+        all_edge_attr = []
+        for data in dataset:
+            all_edge_attr.append(data.edge_attr)
+        all_edge_attr = torch.cat(all_edge_attr, dim=0)
+        
+        # Determine how many edges to shuffle
+        num_edges = all_edge_attr.size(0)
+        num_shuffled_edges = int(shuffle_prob * num_edges)
+        
+        # Select random edges to shuffle
+        shuffle_indices = torch.randperm(num_edges)[:num_shuffled_edges]
+        
+        # Shuffle features of the selected edges
+        shuffled_edge_features = all_edge_attr[torch.randperm(num_edges), :]
+        all_edge_attr[shuffle_indices] = shuffled_edge_features[shuffle_indices]
+        
+        # Split the shuffled edge attributes back into each graph
+        start_idx = 0
+        for data in dataset:
+            end_idx = start_idx + data.edge_attr.size(0)
+            data.edge_attr = all_edge_attr[start_idx:end_idx]
+            start_idx = end_idx
+
+    return dataset
 
 
     # for data in dataset:

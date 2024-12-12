@@ -10,6 +10,7 @@ from time import time
 from model import FlexibleGNN, FeatureExtractorGNN  # Import FlexibleGNN from a separate file
 from noisenoise import add_noise_to_dataset
 from sklearn.linear_model import LogisticRegression, LinearRegression
+from torch_geometric.datasets import TUDataset, GNNBenchmarkDataset
 
 
 def infer_task_type(dataset):
@@ -275,6 +276,18 @@ def train_and_evaluate_linear(
     return mean_score, task_type
 
 
+def load_tu_dataset(dataset_name):
+    """
+    Load a graph dataset by name.
+    Supports TUDataset and GNNBenchmarkDataset as examples.
+    """
+    if dataset_name.startswith("TUDataset"):
+        dataset = TUDataset(root=f"./data/{dataset_name}", name=dataset_name.split(":")[1])
+    elif dataset_name.startswith("GNNBenchmark"):
+        dataset = GNNBenchmarkDataset(root=f"./data/{dataset_name}", name=dataset_name.split(":")[1])
+    else:
+        dataset = None
+    return dataset
 
 
 def evaluate_main(dataset="ogbg-molclintox",
@@ -295,6 +308,9 @@ def evaluate_main(dataset="ogbg-molclintox",
     elif dataset.startswith("ogbg"):
         from ogb.graphproppred import PygGraphPropPredDataset
         dataset = PygGraphPropPredDataset(name=dataset)
+
+    elif dataset.startswith("TUDataset") or dataset.startswith("GNNBenchmark"):
+        dataset = load_tu_dataset(dataset)
     else:
         raise ValueError(f"Unsupported dataset: {dataset}")
 

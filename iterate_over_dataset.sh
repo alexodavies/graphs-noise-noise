@@ -2,16 +2,16 @@
 
 # Define the list of OGB graph-level datasets
 datasets=(
-    # "ogbg-moltox21"
-    # "ogbg-molbace"
-    # "ogbg-molbbbp"
-    # "ogbg-molclintox"
-    # "ogbg-molmuv"
-    # "ogbg-molsider"
-    # "ogbg-mollipo"
-    # "ogbg-molfreesolv"
-    # "ogbg-molesol"
+    "ogbg-molesol"
+    "ogbg-molbbbp"
+    "ogbg-molclintox"
+    "ogbg-mollipo"
+    "ogbg-molfreesolv"
+    "ogbg-molbace"
+    "ogbg-molmuv"
+    "ogbg-molsider"
     "ogbg-molhiv"
+    "ogbg-moltox21"
     "ogbg-molpcba"
     "ogbg-moltoxcast"
 )
@@ -23,5 +23,5 @@ n_repeats=5
 # Iterate over each dataset and run the evaluation script
 for dataset in "${datasets[@]}"; do
     echo "Evaluating dataset: $dataset"
-    python main.py --dataset "$dataset" --n_noise_levels "$n_noise_levels" --n_repeats "$n_repeats"
+    python ogb-graph-level.py --dataset "$dataset" --n_noise_levels "$n_noise_levels" --n_repeats "$n_repeats"
 done
