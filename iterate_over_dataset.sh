@@ -24,7 +24,7 @@ datasets=(
 
 # Set default values for the arguments
 n_noise_levels=10
-n_repeats=5
+n_repeats=10
 use_linear_flag=""  # Empty by default (not passed to Python)
 layer="gcn"
 
