@@ -1,42 +1,23 @@
-import os
 import warnings
 import argparse
-import json
 import numpy as np
 from tqdm import tqdm
 from supervised_functions import evaluate_main
 import wandb
-
+from utils import save_run
+from metrics import plot_results
 # Torch geometric produces future warnings with current version of OGB
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-# Function to save experiment runs
-def save_run(performance_dict):
-    if "results" not in os.listdir():
-        os.mkdir("results")
-    if "results-linear" not in os.listdir():
-        os.mkdir('results-linear')
-
-    # Save locally
-    linear = '-linear' if performance_dict['linear'] else ""
-    json_path = f"results{linear}/{performance_dict['dataset']}{linear}.json"
-    with open(json_path, "w") as f:
-        json.dump(performance_dict, f)
-
-    # # Log to wandb
-    # wandb.save(json_path)
-    # wandb.log({"performance_json": wandb.Artifact(
-    #     f"{performance_dict['dataset']}_results", type="dataset",
-    #     description="Results JSON", metadata=performance_dict
-    # )})
 
 def evaluate_dataset(dataset, n_noise_levels=10, n_repeats=5, use_linear = False):
     wandb.init(project="graph-level-evaluation" + "-linear" if use_linear else "",
-               name=dataset,
+               name=args.layer + '-' + dataset,
                  config={
         "dataset": dataset,
         "n_noise_levels": n_noise_levels,
         "n_repeats": n_repeats,
+        "layer_type":args.layer
     })
 
     result_dict = {"dataset": dataset}
@@ -49,9 +30,9 @@ def evaluate_dataset(dataset, n_noise_levels=10, n_repeats=5, use_linear = False
         ti_performances_feature = []
         repeat_pbar = tqdm(range(n_repeats), desc="Running repeats", leave=False)
         for i_repeat in repeat_pbar:
-            struc, tt = evaluate_main(dataset=dataset, t_structure=ts[ti], linear = use_linear)
+            struc, tt = evaluate_main(dataset=dataset, t_structure=ts[ti], linear = use_linear, layer_type=args.layer)
             ti_performances_structure.append(struc)
-            feat, tt = evaluate_main(dataset=dataset, t_feature=ts[ti], linear = use_linear)
+            feat, tt = evaluate_main(dataset=dataset, t_feature=ts[ti], linear = use_linear, layer_type=args.layer)
             ti_performances_feature.append(feat)
             pbar_string = f"Struc: {struc}, feat: {feat}"
             repeat_pbar.set_postfix_str(pbar_string)
@@ -63,8 +44,8 @@ def evaluate_dataset(dataset, n_noise_levels=10, n_repeats=5, use_linear = False
             "feature_performance": np.mean(ti_performances_feature),
         })
 
-        structure_performances[ts[ti]] = [str(s) for s in ti_performances_structure]
-        feature_performances[ts[ti]] = [str(f) for f in ti_performances_feature]
+        structure_performances[str(ts[ti])] = [str(s) for s in ti_performances_structure]
+        feature_performances[str(ts[ti])] = [str(f) for f in ti_performances_feature]
 
 
 
@@ -72,6 +53,11 @@ def evaluate_dataset(dataset, n_noise_levels=10, n_repeats=5, use_linear = False
     result_dict["feature"] = feature_performances
     result_dict["task_type"] = tt
     result_dict["linear"] = use_linear
+    result_dict["layer"] = args.layer
+
+    image_path = plot_results(result_dict, extra_save_string=args.layer, return_path=True)
+
+    wandb.log({"Media/Result-Image": wandb.Image(image_path)})
 
     save_run(result_dict)
     wandb.finish()
@@ -102,6 +88,13 @@ if __name__ == "__main__":
         type = bool,
         default = False,
         help = "Whether to use the neural network as a feature projector for linear models instead of normal supervised training"
+    )
+
+    parser.add_argument(
+        '--layer',
+        type = str,
+        default = "gcn",
+        help = "The type of GNN layer to use (gcn, gin, gat, gps)"
     )
     args = parser.parse_args()
 

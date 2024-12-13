@@ -1,6 +1,8 @@
 import networkx as nx
 import torch_geometric
 import numpy as np
+import os
+import json
 import matplotlib.pyplot as plt
 import torch
 import wandb
@@ -14,6 +16,20 @@ from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims
 
 full_atom_feature_dims = get_atom_feature_dims()
 full_bond_feature_dims = get_bond_feature_dims()
+
+# Function to save experiment results
+def save_run(performance_dict):
+    layer = performance_dict['layer']
+    if "results" not in os.listdir():
+        os.mkdir("results")
+    if layer not in os.listdir("results"):
+        os.mkdir(f"results/{layer}")
+
+    linear = '-linear' if performance_dict['linear'] else ""
+    
+    json_path = f"results/{layer}/{performance_dict['dataset']}{linear}.json"
+    with open(json_path, "w") as f:
+        json.dump(performance_dict, f)
 
 def get_total_mol_onehot_dims():
     return np.sum(full_atom_feature_dims), np.sum(full_bond_feature_dims)

@@ -29,6 +29,7 @@ MANIFEST
 outputs/
 outputs/top_models
 outputs/top_models/*
+data/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

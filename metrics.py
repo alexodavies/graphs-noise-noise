@@ -2,9 +2,8 @@ import numpy as np
 from scipy.stats import spearmanr
 import matplotlib.pyplot as plt
 
-def plot_results(result_dict, extra_save_string=""):
+def plot_results(result_dict, extra_save_string="", return_path = False):
     fig, ax = plt.subplots(figsize=(4.5, 3))
-
     dataset = result_dict["dataset"]
     task_type = result_dict["task_type"]
 
@@ -67,6 +66,10 @@ def plot_results(result_dict, extra_save_string=""):
     plt.tight_layout()
     plt.savefig(f"figures/{dataset}{extra_string}.png", dpi=600)
     plt.close()
+
+
+    if return_path:
+        return f"figures/{dataset}{extra_string}.png"
 
 def nncr(result_dict):
     dataset = result_dict["dataset"]
