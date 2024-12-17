@@ -11,15 +11,18 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 def evaluate_dataset(dataset, n_noise_levels=10, n_repeats=5, use_linear = False):
+    use_linear = False # TODO: fix code - currently being set to true by bash script
+    pos_included_string = "-pos" if args.structure else ""
     wandb.init(project="graph-level-evaluation" + "-linear" if use_linear else "",
-               name=args.layer + '-' + dataset,
+               name=args.layer + '-' + dataset + pos_included_string,
                  config={
         "dataset": dataset,
         "n_noise_levels": n_noise_levels,
         "n_repeats": n_repeats,
-        "layer_type":args.layer
+        "layer_type":args.layer,
+        "pos_encodings": args.structure
     })
-
+    
     result_dict = {"dataset": dataset}
     structure_performances = dict()
     feature_performances = dict()
@@ -30,9 +33,11 @@ def evaluate_dataset(dataset, n_noise_levels=10, n_repeats=5, use_linear = False
         ti_performances_feature = []
         repeat_pbar = tqdm(range(n_repeats), desc="Running repeats", leave=False)
         for i_repeat in repeat_pbar:
-            struc, tt = evaluate_main(dataset=dataset, t_structure=ts[ti], linear = use_linear, layer_type=args.layer)
+            struc, tt = evaluate_main(dataset=dataset, t_structure=ts[ti],
+                                       linear = use_linear, layer_type=args.layer, pos_encodings = args.structure)
             ti_performances_structure.append(struc)
-            feat, tt = evaluate_main(dataset=dataset, t_feature=ts[ti], linear = use_linear, layer_type=args.layer)
+            feat, tt = evaluate_main(dataset=dataset, t_feature=ts[ti],
+                                      linear = use_linear, layer_type=args.layer, pos_encodings = args.structure)
             ti_performances_feature.append(feat)
             pbar_string = f"Struc: {struc}, feat: {feat}"
             repeat_pbar.set_postfix_str(pbar_string)
@@ -88,6 +93,13 @@ if __name__ == "__main__":
         type = bool,
         default = False,
         help = "Whether to use the neural network as a feature projector for linear models instead of normal supervised training"
+    )
+
+    parser.add_argument(
+        '--structure',
+        type = bool,
+        default = False,
+        help = "Whether to include positional encoding in the model"
     )
 
     parser.add_argument(

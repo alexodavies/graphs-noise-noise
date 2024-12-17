@@ -28,6 +28,7 @@ class FlexibleGNN(torch.nn.Module):
         # Ensure the layer type is valid
         if layer_type not in self.VALID_LAYERS:
             raise ValueError(f"Invalid layer type '{layer_type}'. Valid options are: {list(self.VALID_LAYERS.keys())}")
+        self.layer_type = layer_type
 
         # Select the layer type
         gnn_layer_type = self.VALID_LAYERS[layer_type]
@@ -39,7 +40,7 @@ class FlexibleGNN(torch.nn.Module):
         if model_kwargs is None:
             model_kwargs = {}
 
-        self.use_pe = (layer_type == "gps")
+        self.use_pe = pe_dim != 0 # (layer_type == "gps")
         self.pe_dim = pe_dim
 
         # Node, edge, and positional embedding layers
@@ -119,12 +120,21 @@ class FlexibleGNN(torch.nn.Module):
 
         # Apply GNN layers
         for gnn_layer in self.gnn_layers:
-            if self.use_edge_attr and self.use_pe:
+
+            if self.layer_type == "gps": # originally gps
                 x = gnn_layer(x, edge_index, edge_attr=edge_attr, batch=batch)
-            elif self.use_edge_attr:
+            elif self.layer_type == "gin": # originally gin
                 x = gnn_layer(x, edge_index, edge_attr=edge_attr)
-            else:
+            else: # originally gcn
                 x = gnn_layer(x, edge_index)
+
+            # if self.use_edge_attr and self.use_pe: # originally gps
+            #     x = gnn_layer(x, edge_index, edge_attr=edge_attr, batch=batch)
+            # elif self.use_edge_attr: # originally gin
+            #     x = gnn_layer(x, edge_index, edge_attr=edge_attr)
+            # else: # originally gcn, gat
+            #     x = gnn_layer(x, edge_index)
+
             x = ReLU()(x)  # Apply non-linearity
 
         if self.task_type == "graph":

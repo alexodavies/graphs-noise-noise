@@ -12,6 +12,7 @@ from noisenoise import add_noise_to_dataset
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from torch_geometric.datasets import TUDataset, GNNBenchmarkDataset
 from torch_geometric.data import Data
+from torch_geometric.transforms import AddLaplacianEigenvectorPE, AddRandomWalkPE
 
 tu_classes_lookup: dict = {"ENZYMES":6,
                            "MUTAG":2,
@@ -20,51 +21,56 @@ tu_classes_lookup: dict = {"ENZYMES":6,
                            "IMDB-BINARY":2,
                            "REDDIT-BINARY":2}
 
-def add_positional_encodings(data: Data, pe_dim: int, walk_length: int = 20, attr_name: str = 'pe') -> Data:
-    """
-    Adds positional encodings to a PyTorch Geometric Data object.
+# def add_positional_encodings(data: Data, pe_dim: int, walk_length: int = 20, attr_name: str = 'pe') -> Data:
+#     """
+#     Adds positional encodings to a PyTorch Geometric Data object.
 
-    Args:
-        data (Data): PyTorch Geometric data object containing the graph.
-        pe_dim (int): Dimension of the positional encoding.
-        walk_length (int): Length of the random walks to compute the positional encoding.
-        attr_name (str): Attribute name to store the positional encodings in the Data object.
+#     Args:
+#         data (Data): PyTorch Geometric data object containing the graph.
+#         pe_dim (int): Dimension of the positional encoding.
+#         walk_length (int): Length of the random walks to compute the positional encoding.
+#         attr_name (str): Attribute name to store the positional encodings in the Data object.
 
-    Returns:
-        Data: The updated Data object with positional encodings added as a new attribute.
-    """
-    # Validate input
-    if not isinstance(data, Data):
-        raise ValueError("Input must be a PyTorch Geometric Data object.")
-    if pe_dim <= 0:
-        raise ValueError("Positional encoding dimension must be a positive integer.")
+#     Returns:
+#         Data: The updated Data object with positional encodings added as a new attribute.
+#     """
+#     # Validate input
+#     if not isinstance(data, Data):
+#         raise ValueError("Input must be a PyTorch Geometric Data object.")
+#     if pe_dim <= 0:
+#         raise ValueError("Positional encoding dimension must be a positive integer.")
 
-    # Initialize positional encoding tensor
-    num_nodes = data.num_nodes
-    pos_encodings = torch.zeros((num_nodes, pe_dim))
+#     # Initialize positional encoding tensor
+#     num_nodes = data.num_nodes
+#     pos_encodings = torch.zeros((num_nodes, pe_dim))
 
-    # Compute random walk positional encodings
-    for i in range(num_nodes):
-        walk = [i]
-        for _ in range(walk_length):
-            neighbors = data.edge_index[1][data.edge_index[0] == walk[-1]].tolist()
-            if neighbors:
-                rand_index = torch.randint(0, len(neighbors), (1,)).item()
-                walk.append(torch.tensor(neighbors)[rand_index])
-            else:
-                break
+#     # Compute random walk positional encodings
+#     for i in range(num_nodes):
+#         walk = [i]
+#         for _ in range(walk_length):
+#             neighbors = data.edge_index[1][data.edge_index[0] == walk[-1]].tolist()
+#             if neighbors:
+#                 rand_index = torch.randint(0, len(neighbors), (1,)).item()
+#                 walk.append(torch.tensor(neighbors)[rand_index])
+#             else:
+#                 break
 
-        # Encode the walk
-        for j, node in enumerate(walk[:pe_dim]):
-            pos_encodings[i, j] = node + 1  # Simple encoding, can be replaced by more complex logic
+#         # Encode the walk
+#         for j, node in enumerate(walk[:pe_dim]):
+#             pos_encodings[i, j] = node + 1  # Simple encoding, can be replaced by more complex logic
 
-    # Normalize the positional encodings (optional)
-    pos_encodings = pos_encodings / pos_encodings.sum(dim=1, keepdim=True)
+#     # Normalize the positional encodings (optional)
+#     pos_encodings = pos_encodings / pos_encodings.sum(dim=1, keepdim=True)
 
-    # Add positional encodings as a new attribute to the Data object
-    setattr(data, attr_name, pos_encodings)
+#     # Add positional encodings as a new attribute to the Data object
+#     setattr(data, attr_name, pos_encodings)
 
-    return data
+#     return data
+
+# def add_positional_encodings(data: Data, pe_dim: int, walk_length: int = 20, attr_name: str = 'pe') -> Data:
+
+    
+
 
 def add_pe_to_dataset(dataset, pe_dim, walk_length=20, attr_name='pe'):
     """
@@ -79,10 +85,11 @@ def add_pe_to_dataset(dataset, pe_dim, walk_length=20, attr_name='pe'):
     Returns:
         Dataset: The updated PyTorch Geometric dataset with positional encodings added to all graphs.
     """
-
+    # LaplacianPE = AddLaplacianEigenvectorPE(pe_dim, attr_name = attr_name, is_undirected=True)
+    RWPE = AddRandomWalkPE(walk_length, attr_name = attr_name)
     # Add positional encodings to all graphs in the dataset
     for idata, data in enumerate(dataset):
-        dataset[idata] = add_positional_encodings(data, pe_dim, walk_length, attr_name)
+        dataset[idata] = RWPE.forward(data) # , pe_dim, walk_length, attr_name)
 
     return dataset
 
@@ -203,7 +210,7 @@ def evaluate(model, loader, device, task_type):
 
 
 
-def train_and_evaluate(dataset, test_dataset, layer_type, hidden_dim, num_layers, batch_size, epochs, lr, t_structure, t_feature, device):
+def train_and_evaluate(dataset, test_dataset, layer_type, hidden_dim, num_layers, batch_size, epochs, lr, t_structure, t_feature, device, pos_encodings = False):
     """
     Train and evaluate the FlexibleGNN on the given dataset with added noise.
 
@@ -225,12 +232,13 @@ def train_and_evaluate(dataset, test_dataset, layer_type, hidden_dim, num_layers
     """
     # Infer task level and type
     task_level, task_type = infer_task_type(dataset)
+    pe_original_dim = 20
 
     # Create noisy copies of datasets
     noisy_train_dataset = add_noise_to_dataset(copy.deepcopy(dataset), t_structure, t_feature)
-    if layer_type == "gps":
+    if pos_encodings:
         pe_dim = int(0.2 * hidden_dim)
-        noisy_train_dataset = add_pe_to_dataset(noisy_train_dataset, 20, attr_name='pe')
+        noisy_train_dataset = add_pe_to_dataset(noisy_train_dataset, pe_original_dim, attr_name='pe')
     else:
         pe_dim = 0
 
@@ -238,8 +246,8 @@ def train_and_evaluate(dataset, test_dataset, layer_type, hidden_dim, num_layers
 
     noisy_test_dataset = add_noise_to_dataset(copy.deepcopy(test_dataset), t_structure, t_feature)
     noisy_test_loader = DataLoader(noisy_test_dataset, batch_size=batch_size, shuffle=False)
-    if layer_type == "gps":
-        noisy_test_dataset = add_pe_to_dataset(noisy_test_dataset, 20, attr_name='pe')
+    if pos_encodings:
+        noisy_test_dataset = add_pe_to_dataset(noisy_test_dataset, pe_original_dim, attr_name='pe')
 
     # Get dataset dimensions
     node_in_dim = dataset.num_node_features
@@ -502,7 +510,8 @@ def evaluate_main(dataset="ogbg-molclintox",
          lr=0.001, 
          t_structure=0., 
          t_feature=0.,
-         linear = False):
+         linear = False,
+         pos_encodings = False):
 
     # Load dataset
     if dataset.startswith("ogbn"):
@@ -548,7 +557,8 @@ def evaluate_main(dataset="ogbg-molclintox",
             lr=lr,
             t_structure=t_structure,
             t_feature=t_feature,
-            device=device
+            device=device,
+            pos_encodings=pos_encodings
         )
     else:
         score, task_type = train_and_evaluate_linear(
