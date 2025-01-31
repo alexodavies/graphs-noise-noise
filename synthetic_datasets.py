@@ -216,6 +216,91 @@ class SyntheticDataset(InMemoryDataset):
 
     def __repr__(self):
         return f"SyntheticDataset({self.label_type})"
+    
+
+class SyntheticDouble(InMemoryDataset):
+    def __init__(self, root, label_type, num_samples=8000, transform=None, pre_transform=None):
+        self.label_type = label_type
+        self.num_samples = num_samples
+        super(SyntheticDouble, self).__init__(root, transform, pre_transform)
+
+        # Ensure processed directory exists before loading
+        os.makedirs(self.processed_dir, exist_ok=True)
+
+        # Load or generate data
+        if not os.path.exists(self.processed_paths[0]):
+            self.process()
+        self.task_type = "classification"
+        self.data, self.slices = torch.load(self.processed_paths[0])
+
+    @property
+    def raw_file_names(self):
+        return []
+
+    @property
+    def processed_file_names(self):
+        return [f'data_{self.label_type}.pt']
+
+    def process(self):
+        """Processes and saves the dataset."""
+        self._generate_synthetic_data()
+
+    def _generate_synthetic_data(self):
+        """Generates synthetic graph data and stores it."""
+        data_list = []
+        is_coupled = self.label_type.endswith("coupled")
+
+        for _ in tqdm(range(self.num_samples)):
+            # resolution = np.random.randint(2, 4)
+            # sphere_edges = 3 * 2 ** (2 * resolution) * 10  # Approximate edge count for sphere
+            # triangle_resolution = int(np.round((np.sqrt(2 * sphere_edges / 3) - 1), decimals=0))  # Adjust for edges
+            width = np.random.randint(2, 8)
+            height = np.random.randint(2, 8)
+
+            num_edges = 3*width*height - (width+height+3)/2 + 2*(width + height)
+            # num_edges = int(2*np.random.randint(24,256))
+
+
+            if is_coupled:
+                is_ladder = random() > 0.5
+                is_neg_mean = random() > 0.5
+
+                if is_ladder == is_neg_mean:
+                    label = 1
+                else:
+                    label = 0
+
+            else:
+                is_ladder = random() > 0.5
+                is_neg_mean = is_ladder
+
+                label = int(is_ladder)
+
+            # is_sphere = random() > 0.5
+            # structure_label = 1 if is_sphere else 0    
+            # feature_label = 1 if random() > 0.5 else 0
+
+            if is_ladder:
+                data = generate_hexagonal_grid_graph(width = width, height = height)
+            else:
+                data = generate_circular_ladder_graph(num_edges=num_edges)
+
+            # mean = 1 if random() > 0.5 else -1
+            data = generate_bimodal_nodes(data, mean= -1 if is_neg_mean else 1)
+            data = generate_bimodal_edges(data, mean= -1 if is_neg_mean else 1)
+
+            data.y = torch.tensor(label, dtype=torch.long)
+            data_list.append(data)
+
+        self.data, self.slices = self.collate(data_list)
+
+        # Ensure processed directory exists before saving
+        os.makedirs(self.processed_dir, exist_ok=True)
+
+        torch.save((self.data, self.slices), self.processed_paths[0])
+
+    def __repr__(self):
+        return f"CoupledDataset({self.label_type})"
 
 
 def visualize_graph(data, title="Graph Visualization"):

@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from model import FlexibleGNN, FeatureExtractorGNN  # Import FlexibleGNN from a separate file
 from noisenoise import add_noise_to_dataset
-from synthetic_datasets import SyntheticDataset
+from synthetic_datasets import SyntheticDataset, SyntheticDouble
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from torch_geometric.datasets import TUDataset, GNNBenchmarkDataset
 from torch_geometric.data import Data
@@ -496,7 +496,10 @@ def evaluate_main(dataset="ogbg-molclintox",
 
 
     elif dataset.startswith("synth"):
-        dataset = SyntheticDataset(root="data/synthetic", label_type = dataset)
+        if dataset.endswith("feature") or dataset.endswith("structure"):
+            dataset = SyntheticDataset(root="data/synthetic", label_type = dataset)
+        else:
+            dataset = SyntheticDouble(root="data/synthetic", label_type=dataset)
 
         split_props = 0.7, 0.2, 0.1
         split_ns = [int(prop * len(dataset)) for prop in split_props]
