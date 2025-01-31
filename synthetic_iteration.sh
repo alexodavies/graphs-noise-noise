@@ -2,8 +2,8 @@
 
 # Define the list of OGB graph-level datasets
 datasets=(
-    "synth-coupled"
-    "synth-easy"
+    "synth-feature"
+    "synth-structure"
 )
 
 # Define the list of GNN layers
@@ -29,6 +29,7 @@ done
 # Shift the parsed options out of the positional arguments
 shift "$((OPTIND - 1))"
 
+
 # Iterate over each dataset, layer, and structure flag
 for dataset in "${datasets[@]}"; do
     for layer in "${layers[@]}"; do
@@ -39,7 +40,6 @@ for dataset in "${datasets[@]}"; do
             --n_noise_levels "$n_noise_levels" \
             --n_repeats "$n_repeats" \
             --use_linear False \
-            --structure True \
             --layer "$layer"
         # done
     done
@@ -55,7 +55,7 @@ for dataset in "${datasets[@]}"; do
             --n_noise_levels "$n_noise_levels" \
             --n_repeats "$n_repeats" \
             --use_linear False \
-            --structure False \
+            --structure True \
             --layer "$layer"
         # done
     done
