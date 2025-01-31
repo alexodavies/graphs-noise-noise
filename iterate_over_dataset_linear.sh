@@ -23,5 +23,5 @@ n_repeats=5
 # Iterate over each dataset and run the evaluation script
 for dataset in "${datasets[@]}"; do
     echo "Evaluating dataset: $dataset"
-    python main.py --dataset "$dataset" --n_noise_levels "$n_noise_levels" --n_repeats "$n_repeats" --use_linear True
+    python graph-level.py --dataset "$dataset" --n_noise_levels "$n_noise_levels" --n_repeats "$n_repeats" --use_linear True
 done

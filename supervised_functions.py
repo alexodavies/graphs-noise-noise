@@ -6,9 +6,11 @@ import numpy as np
 import torch.nn.functional as F
 import copy
 from time import time
+from tqdm import tqdm
 
 from model import FlexibleGNN, FeatureExtractorGNN  # Import FlexibleGNN from a separate file
 from noisenoise import add_noise_to_dataset
+from synthetic_datasets import SyntheticDataset
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from torch_geometric.datasets import TUDataset, GNNBenchmarkDataset
 from torch_geometric.data import Data
@@ -20,54 +22,6 @@ tu_classes_lookup: dict = {"ENZYMES":6,
                            "COLLAB":3,
                            "IMDB-BINARY":2,
                            "REDDIT-BINARY":2}
-
-# def add_positional_encodings(data: Data, pe_dim: int, walk_length: int = 20, attr_name: str = 'pe') -> Data:
-#     """
-#     Adds positional encodings to a PyTorch Geometric Data object.
-
-#     Args:
-#         data (Data): PyTorch Geometric data object containing the graph.
-#         pe_dim (int): Dimension of the positional encoding.
-#         walk_length (int): Length of the random walks to compute the positional encoding.
-#         attr_name (str): Attribute name to store the positional encodings in the Data object.
-
-#     Returns:
-#         Data: The updated Data object with positional encodings added as a new attribute.
-#     """
-#     # Validate input
-#     if not isinstance(data, Data):
-#         raise ValueError("Input must be a PyTorch Geometric Data object.")
-#     if pe_dim <= 0:
-#         raise ValueError("Positional encoding dimension must be a positive integer.")
-
-#     # Initialize positional encoding tensor
-#     num_nodes = data.num_nodes
-#     pos_encodings = torch.zeros((num_nodes, pe_dim))
-
-#     # Compute random walk positional encodings
-#     for i in range(num_nodes):
-#         walk = [i]
-#         for _ in range(walk_length):
-#             neighbors = data.edge_index[1][data.edge_index[0] == walk[-1]].tolist()
-#             if neighbors:
-#                 rand_index = torch.randint(0, len(neighbors), (1,)).item()
-#                 walk.append(torch.tensor(neighbors)[rand_index])
-#             else:
-#                 break
-
-#         # Encode the walk
-#         for j, node in enumerate(walk[:pe_dim]):
-#             pos_encodings[i, j] = node + 1  # Simple encoding, can be replaced by more complex logic
-
-#     # Normalize the positional encodings (optional)
-#     pos_encodings = pos_encodings / pos_encodings.sum(dim=1, keepdim=True)
-
-#     # Add positional encodings as a new attribute to the Data object
-#     setattr(data, attr_name, pos_encodings)
-
-#     return data
-
-# def add_positional_encodings(data: Data, pe_dim: int, walk_length: int = 20, attr_name: str = 'pe') -> Data:
 
     
 
@@ -325,9 +279,8 @@ def train_and_evaluate(dataset, test_dataset, layer_type, hidden_dim, num_layers
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     # Training loop
-    for epoch in range(1, epochs + 1):
+    for epoch in tqdm(range(1, epochs + 1), leave = False):
         train_loss = train(model, optimizer, noisy_train_loader, device, task_type)
-
     # Evaluate on the final epoch
     test_performance = evaluate(model, noisy_test_loader, device, task_type)
 
@@ -533,12 +486,24 @@ def evaluate_main(dataset="ogbg-molclintox",
 
     elif dataset.startswith("TUDataset") or dataset.startswith("GNNBenchmark"):
         dataset = load_tu_dataset(dataset)
+        print(f"Loaded: {dataset}")
 
         split_props = 0.7, 0.2, 0.1
         split_ns = [int(prop * len(dataset)) for prop in split_props]
         train_dataset = dataset[:split_ns[0]]
         val_dataset = dataset[split_ns[0]:split_ns[0] + split_ns[1]]
         test_dataset = dataset[split_ns[0] + split_ns[1]:]
+
+
+    elif dataset.startswith("synth"):
+        dataset = SyntheticDataset(root="data/synthetic", label_type = dataset)
+
+        split_props = 0.7, 0.2, 0.1
+        split_ns = [int(prop * len(dataset)) for prop in split_props]
+        train_dataset = dataset[:split_ns[0]]
+        val_dataset = dataset[split_ns[0]:split_ns[0] + split_ns[1]]
+        test_dataset = dataset[split_ns[0] + split_ns[1]:]
+
     else:
         raise ValueError(f"Unsupported dataset: {dataset}")
 
@@ -546,6 +511,7 @@ def evaluate_main(dataset="ogbg-molclintox",
     # Train and evaluate
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if not linear:
+        print(f"Running {dataset} with noise levels: {t_structure}, {t_feature}")
         score, task_type = train_and_evaluate(
             dataset=train_dataset,
             test_dataset=test_dataset,
@@ -561,6 +527,7 @@ def evaluate_main(dataset="ogbg-molclintox",
             pos_encodings=pos_encodings
         )
     else:
+        print("Training linear model")
         score, task_type = train_and_evaluate_linear(
             dataset=train_dataset,
             test_dataset=test_dataset,
