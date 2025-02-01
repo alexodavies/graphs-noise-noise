@@ -2,8 +2,8 @@
 
 # Define the list of OGB graph-level datasets
 datasets=(
-    "synth-feature"
-    "synth-structure"
+    "synth-coupled"
+    "synth-easy"
 )
 
 # Define the list of GNN layers
@@ -30,20 +30,20 @@ done
 shift "$((OPTIND - 1))"
 
 
-# Iterate over each dataset, layer, and structure flag
-for dataset in "${datasets[@]}"; do
-    for layer in "${layers[@]}"; do
-        # for structure in "${structures[@]}"; do
-        echo "Evaluating dataset: $dataset with layer: $layer and structure: $structure"
-        python graph-level.py \
-            --dataset "$dataset" \
-            --n_noise_levels "$n_noise_levels" \
-            --n_repeats "$n_repeats" \
-            --use_linear False \
-            --layer "$layer"
-        # done
-    done
-done
+# # Iterate over each dataset, layer, and structure flag
+# for dataset in "${datasets[@]}"; do
+#     for layer in "${layers[@]}"; do
+#         # for structure in "${structures[@]}"; do
+#         echo "Evaluating dataset: $dataset with layer: $layer and structure: $structure"
+#         python graph-level.py \
+#             --dataset "$dataset" \
+#             --n_noise_levels "$n_noise_levels" \
+#             --n_repeats "$n_repeats" \
+#             --use_linear False \
+#             --layer "$layer"
+#         # done
+#     done
+# done
 
 # Iterate over each dataset, layer, and structure flag
 for dataset in "${datasets[@]}"; do

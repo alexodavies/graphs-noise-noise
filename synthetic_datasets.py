@@ -8,6 +8,108 @@ from random import random
 from torch_geometric.data import Data, InMemoryDataset
 from torch_geometric.utils import to_networkx
 import networkx as nx
+import copy
+
+from noisenoise import add_noise_to_dataset
+
+def pyg_to_networkx_connected(pyg_data):
+    """
+    Converts a PyTorch Geometric graph into a NetworkX graph, 
+    dropping unconnected nodes.
+
+    Parameters:
+        pyg_data (torch_geometric.data.Data): The PyG graph data.
+
+    Returns:
+        networkx.Graph: The converted NetworkX graph without isolated nodes.
+    """
+    # Convert PyG graph to NetworkX
+    nx_graph = to_networkx(pyg_data, to_undirected=True)
+
+    # Remove isolated (unconnected) nodes
+    isolated_nodes = list(nx.isolates(nx_graph))
+    nx_graph.remove_nodes_from(isolated_nodes)
+
+    return nx_graph
+
+def get_degree_list(data):
+    edge_index = data.edge_index
+    num_nodes = data.num_nodes
+    degrees = torch.zeros(num_nodes, dtype=torch.long)
+    for i in range(num_nodes):
+        degrees[i] = torch.sum(edge_index == i)/2
+    return degrees
+
+def noise_and_visualise(dataset):
+    n_noise_levels = 8
+    noise_levels = np.linspace(0, 1, n_noise_levels).tolist()
+    fig, axes = plt.subplots(4, n_noise_levels, figsize=(n_noise_levels*2, 8), squeeze=True)
+
+    index_label_0 = 0
+    index_label_1 = 0
+
+    for di, d in enumerate(dataset):
+        if d.y == 0:
+            index_label_0 = di
+            break
+
+    for di, d in enumerate(dataset):
+        if d.y == 1:
+            index_label_1 = di
+            break
+
+    d0 = dataset[index_label_0]
+    d1 = dataset[index_label_1]
+    
+    g0 = pyg_to_networkx_connected(d0)
+    g1 = pyg_to_networkx_connected(d1)
+    pos0 = nx.kamada_kawai_layout(g0)
+    pos1 = nx.kamada_kawai_layout(g1)
+
+    for i, noise in enumerate(noise_levels):
+        noisy_dataset = add_noise_to_dataset(copy.deepcopy(dataset), noise, noise)
+        d0_noisy = noisy_dataset[index_label_0]
+        d1_noisy = noisy_dataset[index_label_1]
+
+        axes[0, i].set_title(f"t= {noise:.2f}")
+
+        g0 = to_networkx(d0_noisy, to_undirected=True)
+        g1 = to_networkx(d1_noisy, to_undirected=True)
+        
+
+        nx.draw_networkx_edges(g0, pos = pos0, ax=axes[0, i], node_size=0, edge_color="gray")
+        nx.draw_networkx_edges(g1, pos = pos1, ax=axes[1, i], node_size=0, edge_color="gray")
+        # nx.draw(pyg_to_networkx_connected(d1_noisy), ax=axes[1, i], node_size=0, edge_color="gray")
+
+        d0_feats = d0_noisy.x.numpy().flatten()
+        d1_feats = d1_noisy.x.numpy().flatten()
+
+        axes[2, i].hist(d0_feats, bins=20, alpha=0.5, label='Class 0')
+        axes[2, i].hist(d1_feats, bins=20, alpha=0.5, label='Class 1')
+
+        axes[3, i].hist(get_degree_list(d0_noisy).numpy(), alpha=0.5, label='Class 0', bins = np.linspace(0,4,12))
+        axes[3, i].hist(get_degree_list(d1_noisy).numpy(), alpha=0.5, label='Class 1', bins = np.linspace(0,4,12))
+
+        for ax in axes[:-1, i]:
+            ax.set_xticks([])  # Remove x-axis ticks
+            ax.set_yticks([])  # Remove y-axis ticks
+            ax.set_frame_on(False)  # Remove the border/frame
+
+        axes[3, i].set_yticks([])  # Remove y-axis ticks
+        # axes[3, i].set_frame_on(False)
+
+        # axes[2,i].set_axis_off()
+
+    axes[0,0].set_ylabel("Ladder Ring", rotation = "vertical")
+    axes[1,0].set_ylabel("Hex Grid", rotation = "vertical")
+    axes[2,0].set_ylabel("Node Features", rotation = "vertical")
+    axes[3,0].set_ylabel("Degrees", rotation = "vertical")
+
+    plt.tight_layout()
+    plt.savefig("synthetic_noise.png", dpi=300)
+    # plt.show()
+
+
 
 def generate_hexagonal_grid_graph(width, height) -> Data:
     """
@@ -185,8 +287,8 @@ class SyntheticDataset(InMemoryDataset):
             # resolution = np.random.randint(2, 4)
             # sphere_edges = 3 * 2 ** (2 * resolution) * 10  # Approximate edge count for sphere
             # triangle_resolution = int(np.round((np.sqrt(2 * sphere_edges / 3) - 1), decimals=0))  # Adjust for edges
-            width = np.random.randint(2, 8)
-            height = np.random.randint(2, 8)
+            width = np.random.randint(3, 4)
+            height = np.random.randint(3, 4)
 
             num_edges = 3*width*height - (width+height+3)/2 + 2*(width + height)
             # num_edges = int(2*np.random.randint(24,256))
@@ -315,25 +417,25 @@ def visualize_graph(data, title="Graph Visualization"):
 if __name__ == "__main__":
     # Generate and load dataset
     dataset = SyntheticDataset(root='data/synthetic', label_type="structure", num_samples=500)
+    noise_and_visualise(dataset)
+    # # Print dataset details
+    # print(dataset)
+    # for i in range(len(dataset)):
+    #     if dataset[i].y == 0:
+    #     # Visualize a couple of graphs from the dataset
+    #         print(torch.mean(dataset[i].x))
+    #         visualize_graph(dataset[i], title=f"Sample Graph 1 {dataset[i].y}")
+    #         break
 
-    # Print dataset details
-    print(dataset)
-    for i in range(len(dataset)):
-        if dataset[i].y == 0:
-        # Visualize a couple of graphs from the dataset
-            print(torch.mean(dataset[i].x))
-            visualize_graph(dataset[i], title=f"Sample Graph 1 {dataset[i].y}")
-            break
-
-    for i in range(len(dataset)):
-        if dataset[i].y == 1:
-        # Visualize a couple of graphs from the dataset
-            print(torch.mean(dataset[i].x))
-            visualize_graph(dataset[i], title=f"Sample Graph 1 {dataset[i].y}")
-            break
-    edges_c1 = [d.num_edges for d in dataset if d.y == 0]
-    edges_c2 = [d.num_edges for d in dataset if d.y == 1]
-    plt.hist(edges_c1, bins=20, alpha=0.5, label='Class 0')
-    plt.hist(edges_c2, bins=20, alpha=0.5, label='Class 1')
-    plt.legend()
-    plt.show()
+    # for i in range(len(dataset)):
+    #     if dataset[i].y == 1:
+    #     # Visualize a couple of graphs from the dataset
+    #         print(torch.mean(dataset[i].x))
+    #         visualize_graph(dataset[i], title=f"Sample Graph 1 {dataset[i].y}")
+    #         break
+    # edges_c1 = [d.num_edges for d in dataset if d.y == 0]
+    # edges_c2 = [d.num_edges for d in dataset if d.y == 1]
+    # plt.hist(edges_c1, bins=20, alpha=0.5, label='Class 0')
+    # plt.hist(edges_c2, bins=20, alpha=0.5, label='Class 1')
+    # plt.legend()
+    # plt.show()
