@@ -15,7 +15,7 @@ def evaluate_dataset(dataset, n_noise_levels=10, n_repeats=5, use_linear = False
     pos_included_string = "-pos" if args.structure else ""
     wandb.init(project="noise-synthetics-benchmarks", # + "-linear" if use_linear else "",
                entity="hierarchical-diffusion",
-               name=args.layer + '-' + dataset + pos_included_string,
+               name="squared-" + args.layer + '-' + dataset + pos_included_string,
                  config={
         "dataset": dataset,
         "n_noise_levels": n_noise_levels,

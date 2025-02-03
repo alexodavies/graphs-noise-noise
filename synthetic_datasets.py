@@ -6,7 +6,7 @@ import networkx as nx
 from tqdm import tqdm
 from random import random
 from torch_geometric.data import Data, InMemoryDataset
-from torch_geometric.utils import to_networkx, erdos_renyi_graph
+from torch_geometric.utils import to_networkx, erdos_renyi_graph, from_networkx
 import networkx as nx
 import copy
 
@@ -86,11 +86,11 @@ def noise_and_visualise(dataset):
         d0_feats = d0_noisy.x.numpy().flatten()
         d1_feats = d1_noisy.x.numpy().flatten()
 
-        axes[2, i].hist(d0_feats, bins=20, alpha=0.5, label='Class 0')
-        axes[2, i].hist(d1_feats, bins=20, alpha=0.5, label='Class 1')
+        axes[2, i].hist(d0_feats, bins=20, alpha=0.5, label='Class 0', histtype="stepfilled", edgecolor='black', linewidth=1.2)
+        axes[2, i].hist(d1_feats, bins=20, alpha=0.5, label='Class 1', histtype="stepfilled", edgecolor='black', linewidth=1.2)
 
-        axes[3, i].hist(get_degree_list(d0_noisy).numpy(), alpha=0.5, label='Class 0', bins = np.linspace(0,4,12))
-        axes[3, i].hist(get_degree_list(d1_noisy).numpy(), alpha=0.5, label='Class 1', bins = np.linspace(0,4,12))
+        axes[3, i].hist(get_degree_list(d0_noisy).numpy(), alpha=0.5, label='Class 0', bins = np.linspace(0,4,12), histtype="stepfilled", edgecolor='black', linewidth=1.2)
+        axes[3, i].hist(get_degree_list(d1_noisy).numpy(), alpha=0.5, label='Class 1', bins = np.linspace(0,4,12), histtype="stepfilled", edgecolor='black', linewidth=1.2)
 
         for ax in axes[:-1, i]:
             ax.set_xticks([])  # Remove x-axis ticks
@@ -258,10 +258,13 @@ def erdos_renyi_from_data(data):
     n_nodes = data.num_nodes
     n_edges = data.num_edges
 
-    potential_connections = (n_nodes**2) 
+    potential_connections = 2 * (n_nodes**2)
 
     density = n_edges / potential_connections
-    data.edge_index = erdos_renyi_graph(num_nodes=n_nodes, edge_prob=density, directed=False)
+
+    G_pyg = from_networkx(nx.erdos_renyi_graph(n_edges, density))
+
+    data.edge_index = G_pyg.edge_index #erdos_renyi_graph(num_nodes=n_nodes, edge_prob=density, directed=False)
     return data
 
 
@@ -379,7 +382,7 @@ class SyntheticDouble(InMemoryDataset):
             # height = np.random.randint(2, 8)
 
             # num_edges = 3*width*height - (width+height+3)/2 + 2*(width + height)
-            num_edges = int(2*np.random.randint(24,256))
+            num_edges = 48 #int(2*np.random.randint(24,256))
 
 
             if is_coupled:
@@ -439,7 +442,7 @@ def visualize_graph(data, title="Graph Visualization"):
 
 if __name__ == "__main__":
     # Generate and load dataset
-    dataset = SyntheticDataset(root='data/synthetic', label_type="structure", num_samples=500)
+    dataset = SyntheticDouble(root='data/synthetic', label_type="easy", num_samples=8000)
     noise_and_visualise(dataset)
     # # Print dataset details
     # print(dataset)
