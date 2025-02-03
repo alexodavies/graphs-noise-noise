@@ -512,7 +512,14 @@ def evaluate_main(dataset="ogbg-molclintox",
 
 
     # Train and evaluate
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        dev_string = "cuda"
+    elif torch.backends.mps.is_available():
+        dev_string = "mps"
+    else:
+        dev_string = "cpu"
+
+    device = torch.device(dev_string)
     if not linear:
         print(f"Running {dataset} with noise levels: {t_structure}, {t_feature}")
         score, task_type = train_and_evaluate(

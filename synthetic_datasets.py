@@ -192,7 +192,7 @@ def generate_circular_ladder_graph(num_edges: int) -> Data:
     edge_index = torch.tensor(edges, dtype=torch.long).T
 
     # Create PyTorch Geometric Data object
-    data = Data(edge_index=edge_index, num_nodes = torch.max(torch.unique(edge_index)))
+    data = Data(edge_index=edge_index, num_nodes = torch.max(torch.unique(edge_index)) + 1)
 
     return data
 
