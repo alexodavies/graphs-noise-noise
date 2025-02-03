@@ -6,7 +6,7 @@ import networkx as nx
 from tqdm import tqdm
 from random import random
 from torch_geometric.data import Data, InMemoryDataset
-from torch_geometric.utils import to_networkx
+from torch_geometric.utils import to_networkx, erdos_renyi_graph
 import networkx as nx
 import copy
 
@@ -61,8 +61,8 @@ def noise_and_visualise(dataset):
     d0 = dataset[index_label_0]
     d1 = dataset[index_label_1]
     
-    g0 = pyg_to_networkx_connected(d0)
-    g1 = pyg_to_networkx_connected(d1)
+    g0 = to_networkx(d0)
+    g1 = to_networkx(d1)
     pos0 = nx.kamada_kawai_layout(g0)
     pos1 = nx.kamada_kawai_layout(g1)
 
@@ -76,6 +76,8 @@ def noise_and_visualise(dataset):
         g0 = to_networkx(d0_noisy, to_undirected=True)
         g1 = to_networkx(d1_noisy, to_undirected=True)
         
+        axes[0,i].set_title(f"Nodes: {d0_noisy.num_nodes}, edges: {d0_noisy.num_edges}")
+        axes[1,i].set_title(f"Nodes: {d1_noisy.num_nodes}, edges: {d1_noisy.num_edges}")
 
         nx.draw_networkx_edges(g0, pos = pos0, ax=axes[0, i], node_size=0, edge_color="gray")
         nx.draw_networkx_edges(g1, pos = pos1, ax=axes[1, i], node_size=0, edge_color="gray")
@@ -190,7 +192,7 @@ def generate_circular_ladder_graph(num_edges: int) -> Data:
     edge_index = torch.tensor(edges, dtype=torch.long).T
 
     # Create PyTorch Geometric Data object
-    data = Data(edge_index=edge_index)
+    data = Data(edge_index=edge_index, num_nodes = torch.max(torch.unique(edge_index)))
 
     return data
 
@@ -251,6 +253,19 @@ def generate_triangular_grid(resolution=3):
 
 
 
+def erdos_renyi_from_data(data):
+    """Generates a random graph of the same density as the input"""
+    n_nodes = data.num_nodes
+    n_edges = data.num_edges
+
+    potential_connections = (n_nodes**2) 
+
+    density = n_edges / potential_connections
+    data.edge_index = erdos_renyi_graph(num_nodes=n_nodes, edge_prob=density, directed=False)
+    return data
+
+
+
 class SyntheticDataset(InMemoryDataset):
     def __init__(self, root, label_type, num_samples=8000, transform=None, pre_transform=None):
         self.label_type = label_type
@@ -287,20 +302,24 @@ class SyntheticDataset(InMemoryDataset):
             # resolution = np.random.randint(2, 4)
             # sphere_edges = 3 * 2 ** (2 * resolution) * 10  # Approximate edge count for sphere
             # triangle_resolution = int(np.round((np.sqrt(2 * sphere_edges / 3) - 1), decimals=0))  # Adjust for edges
-            width = np.random.randint(3, 4)
-            height = np.random.randint(3, 4)
+            # width = np.random.randint(2, 4)
+            # height = np.random.randint(2, 4)
 
-            num_edges = 3*width*height - (width+height+3)/2 + 2*(width + height)
-            # num_edges = int(2*np.random.randint(24,256))
+            # num_edges = 3*width*height - (width+height+3)/2 + 2*(width + height)
+            num_edges = int(2*np.random.randint(24,256))
+
+            # num_edges = 
 
             is_sphere = random() > 0.5
             structure_label = 1 if is_sphere else 0    
             feature_label = 1 if random() > 0.5 else 0
 
+            # if is_sphere:
+            #     data = generate_hexagonal_grid_graph(width = width, height = height)
+            # else:
+            data = generate_circular_ladder_graph(num_edges=num_edges)
             if is_sphere:
-                data = generate_hexagonal_grid_graph(width = width, height = height)
-            else:
-                data = generate_circular_ladder_graph(num_edges=num_edges)
+                data = erdos_renyi_from_data(data)
 
             # mean = 1 if random() > 0.5 else -1
             data = generate_bimodal_nodes(data, mean=2*(feature_label-0.5))
@@ -356,11 +375,11 @@ class SyntheticDouble(InMemoryDataset):
             # resolution = np.random.randint(2, 4)
             # sphere_edges = 3 * 2 ** (2 * resolution) * 10  # Approximate edge count for sphere
             # triangle_resolution = int(np.round((np.sqrt(2 * sphere_edges / 3) - 1), decimals=0))  # Adjust for edges
-            width = np.random.randint(2, 8)
-            height = np.random.randint(2, 8)
+            # width = np.random.randint(2, 8)
+            # height = np.random.randint(2, 8)
 
-            num_edges = 3*width*height - (width+height+3)/2 + 2*(width + height)
-            # num_edges = int(2*np.random.randint(24,256))
+            # num_edges = 3*width*height - (width+height+3)/2 + 2*(width + height)
+            num_edges = int(2*np.random.randint(24,256))
 
 
             if is_coupled:
@@ -382,10 +401,14 @@ class SyntheticDouble(InMemoryDataset):
             # structure_label = 1 if is_sphere else 0    
             # feature_label = 1 if random() > 0.5 else 0
 
-            if is_ladder:
-                data = generate_hexagonal_grid_graph(width = width, height = height)
-            else:
-                data = generate_circular_ladder_graph(num_edges=num_edges)
+            # if is_ladder:
+            #     data = generate_hexagonal_grid_graph(width = width, height = height)
+            # else:
+            #     data = generate_circular_ladder_graph(num_edges=num_edges)
+
+            data = generate_circular_ladder_graph(num_edges=num_edges)
+            if not is_ladder:
+                data = erdos_renyi_from_data(data)
 
             # mean = 1 if random() > 0.5 else -1
             data = generate_bimodal_nodes(data, mean= -1 if is_neg_mean else 1)
