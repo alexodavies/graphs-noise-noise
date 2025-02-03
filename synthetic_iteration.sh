@@ -2,6 +2,8 @@
 
 # Define the list of OGB graph-level datasets
 datasets=(
+    "synth-coupled"
+    "synth-easy"
     "synth-feature"
     "synth-structure"
 )
