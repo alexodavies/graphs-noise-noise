@@ -383,7 +383,7 @@ class SyntheticDouble(InMemoryDataset):
             # height = np.random.randint(2, 8)
 
             # num_edges = 3*width*height - (width+height+3)/2 + 2*(width + height)
-            num_edges = 64 # int(2*np.random.randint(24,256))
+            num_edges = int(2*np.random.randint(24,256))
 
 
             if is_coupled:
