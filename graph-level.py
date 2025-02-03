@@ -14,7 +14,7 @@ def evaluate_dataset(dataset, n_noise_levels=10, n_repeats=5, use_linear = False
     use_linear = False # TODO: fix code - currently being set to true by bash script
     pos_included_string = "-pos" if args.structure else ""
     wandb.init(entity="hierarchical-diffusion",
-               project="graph-level-evaluation" + "-linear" if use_linear else "",
+               project="noise-synthetics-benchmarks" + "-linear" if use_linear else "",
                name=args.layer + '-' + dataset + pos_included_string,
                  config={
         "dataset": dataset,
