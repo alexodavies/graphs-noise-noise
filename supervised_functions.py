@@ -514,8 +514,6 @@ def evaluate_main(dataset="ogbg-molclintox",
     # Train and evaluate
     if torch.cuda.is_available():
         dev_string = "cuda"
-    elif torch.backends.mps.is_available():
-        dev_string = "mps"
     else:
         dev_string = "cpu"
 

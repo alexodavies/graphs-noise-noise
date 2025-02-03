@@ -265,6 +265,7 @@ def erdos_renyi_from_data(data):
     G_pyg = from_networkx(nx.erdos_renyi_graph(n_edges, density))
 
     data.edge_index = G_pyg.edge_index #erdos_renyi_graph(num_nodes=n_nodes, edge_prob=density, directed=False)
+    data.num_nodes = torch.max(torch.unique(data.edge_index)) + 1
     return data
 
 
@@ -382,7 +383,7 @@ class SyntheticDouble(InMemoryDataset):
             # height = np.random.randint(2, 8)
 
             # num_edges = 3*width*height - (width+height+3)/2 + 2*(width + height)
-            num_edges = int(2*np.random.randint(24,256))
+            num_edges = 64 # int(2*np.random.randint(24,256))
 
 
             if is_coupled:
