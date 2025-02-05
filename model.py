@@ -64,12 +64,21 @@ class FlexibleGNN(torch.nn.Module):
                 )
                 self.gnn_layers.append(gnn_layer_type(nn, **model_kwargs))
             elif layer_type == "gat":
-                in_dim = hidden_dim * model_kwargs.get("heads", 1) if i > 0 else hidden_dim
+                num_heads = model_kwargs.get("heads", 1)
+                in_dim = hidden_dim * num_heads if i > 0 else hidden_dim
                 self.gnn_layers.append(
                     gnn_layer_type(in_dim, hidden_dim, **model_kwargs)  # Keep hidden_dim consistent
                 )
 
             elif layer_type == "gps":
+                num_heads = model_kwargs.get("heads", 1)
+
+                # Ensure hidden_dim is divisible by num_heads
+                if hidden_dim % num_heads != 0:
+                    new_hidden_dim = hidden_dim + (num_heads - hidden_dim % num_heads)
+                    print(f"Adjusting hidden_dim from {hidden_dim} to {new_hidden_dim} to be divisible by num_heads")
+                    hidden_dim = new_hidden_dim  # Adjust hidden_dim to nearest valid value
+
                 local_gnn = GINEConv(
                     Sequential(
                         Linear(hidden_dim, hidden_dim),
@@ -78,6 +87,8 @@ class FlexibleGNN(torch.nn.Module):
                     )
                 )
                 self.gnn_layers.append(gnn_layer_type(channels=hidden_dim, conv=local_gnn, **model_kwargs))
+
+                # self.gnn_layers.append(gnn_layer_type(channels=hidden_dim, conv=local_gnn, **model_kwargs))
             else:  # For GCN and other layers
                 self.gnn_layers.append(gnn_layer_type(hidden_dim, hidden_dim, **model_kwargs))
 
