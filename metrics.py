@@ -46,9 +46,9 @@ def plot_results(result_dict, extra_save_string="", return_path = False):
              length_includes_head = True, color = "black",
              head_width = head_length, head_length = head_length)
 
-    ax.annotate(f"$NNRD_e$:\n{np.around(nnd(result_dict, extremis=True), decimals = 3)}",
-                 xy = (1.05, nnrd_y_adjusted),
-                 color = "black", fontsize = 8)
+    # ax.annotate(f"$NNRD_e$:\n{np.around(nnd(result_dict, extremis=True), decimals = 3)}",
+    #              xy = (1.05, nnrd_y_adjusted),
+    #              color = "black", fontsize = 8)
     
     nnrd_root = min(np.min(np.array(struc_means) - np.array(struc_devs)), np.min(np.array(feat_means)-np.array(feat_devs)))
 

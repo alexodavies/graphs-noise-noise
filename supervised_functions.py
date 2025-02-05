@@ -8,7 +8,8 @@ import copy
 from time import time
 from tqdm import tqdm
 
-from model import FlexibleGNN, FeatureExtractorGNN  # Import FlexibleGNN from a separate file
+# Import FlexibleGNN from a separate file
+from model import FlexibleGNN, FeatureExtractorGNN
 from noisenoise import add_noise_to_dataset
 from synthetic_datasets import SyntheticDataset, SyntheticDouble
 from sklearn.linear_model import LogisticRegression, LinearRegression
@@ -16,14 +17,12 @@ from torch_geometric.datasets import TUDataset, GNNBenchmarkDataset
 from torch_geometric.data import Data
 from torch_geometric.transforms import AddLaplacianEigenvectorPE, AddRandomWalkPE
 
-tu_classes_lookup: dict = {"ENZYMES":6,
-                           "MUTAG":2,
-                           "PROTEINS":2,
-                           "COLLAB":3,
-                           "IMDB-BINARY":2,
-                           "REDDIT-BINARY":2}
-
-    
+tu_classes_lookup: dict = {"ENZYMES": 6,
+                           "MUTAG": 2,
+                           "PROTEINS": 2,
+                           "COLLAB": 3,
+                           "IMDB-BINARY": 2,
+                           "REDDIT-BINARY": 2}
 
 
 def add_pe_to_dataset(dataset, pe_dim, walk_length=20, attr_name='pe'):
@@ -40,12 +39,14 @@ def add_pe_to_dataset(dataset, pe_dim, walk_length=20, attr_name='pe'):
         Dataset: The updated PyTorch Geometric dataset with positional encodings added to all graphs.
     """
     # LaplacianPE = AddLaplacianEigenvectorPE(pe_dim, attr_name = attr_name, is_undirected=True)
-    RWPE = AddRandomWalkPE(walk_length, attr_name = attr_name)
+    RWPE = AddRandomWalkPE(walk_length, attr_name=attr_name)
     # Add positional encodings to all graphs in the dataset
     for idata, data in enumerate(dataset):
-        dataset[idata] = RWPE.forward(data) # , pe_dim, walk_length, attr_name)
+        # , pe_dim, walk_length, attr_name)
+        dataset[idata] = RWPE.forward(data)
 
     return dataset
+
 
 def infer_task_type(dataset):
     """Infer task type and task level from dataset."""
@@ -58,7 +59,7 @@ def infer_task_type(dataset):
         task_type = dataset.task_type
     except:
         return task_level, "multiclass-classification"
-        
+
     if "classification" in task_type:
         return task_level, "classification"
     elif "regression" in task_type:
@@ -80,12 +81,12 @@ def train(model, optimizer, loader, device, task_type):
         data.y = data.y.float()
 
         optimizer.zero_grad()
-        out = model(data) # data.x, data.edge_index, data.edge_attr, data.batch)
+        # data.x, data.edge_index, data.edge_attr, data.batch)
+        out = model(data)
 
         task_losses = []
         if len(data.y.shape) == 1:  # Single task
-            data.y = data.y.reshape(-1,1)  # Add task dimension
-
+            data.y = data.y.reshape(-1, 1)  # Add task dimension
 
         if task_type == "multiclass-classification":
             task_loss = F.cross_entropy(out, data.y.argmax(dim=-1))
@@ -93,7 +94,8 @@ def train(model, optimizer, loader, device, task_type):
 
         else:
             for task_idx in range(data.y.shape[1]):  # Loop over tasks
-                valid_mask = ~torch.isnan(data.y[:, task_idx])  # Mask for valid labels in this task
+                # Mask for valid labels in this task
+                valid_mask = ~torch.isnan(data.y[:, task_idx])
                 if valid_mask.sum() > 0:  # Only compute loss if there are valid labels
                     if task_type == "classification":
                         task_loss = F.binary_cross_entropy_with_logits(
@@ -110,12 +112,12 @@ def train(model, optimizer, loader, device, task_type):
         if len(task_losses) > 0:
             loss = torch.stack(task_losses).mean()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # Gradient clipping
+            torch.nn.utils.clip_grad_norm_(
+                model.parameters(), max_norm=1.0)  # Gradient clipping
             optimizer.step()
             total_loss += loss.item()
 
     return total_loss / len(loader)
-
 
 
 def evaluate(model, loader, device, task_type):
@@ -131,40 +133,56 @@ def evaluate(model, loader, device, task_type):
             data.edge_attr = data.edge_attr.float()
             data.y = data.y.float()
             if len(data.y.shape) == 1:  # Single task
-                data.y = data.y.reshape(-1,1)  # Add task dimension
-            out = model(data) # data.x, data.edge_index, data.edge_attr, data.batch)
+                data.y = data.y.reshape(-1, 1)  # Add task dimension
+            # data.x, data.edge_index, data.edge_attr, data.batch)
+            out = model(data)
 
             if task_type == "multiclass-classification":
-                preds = F.softmax(out, dim = -1).cpu().numpy() #torch.argmax(out, dim=-1).cpu().numpy()
+                # torch.argmax(out, dim=-1).cpu().numpy()
+                preds = F.softmax(out, dim=-1).cpu().numpy()
                 if preds.shape[1] == 2:
-                    preds = preds[:,1]
+                    preds = preds[:, 1]
                 labels = torch.argmax(data.y, dim=-1).cpu().numpy()
                 score = roc_auc_score(labels, preds, multi_class="ovo")
                 task_scores.append(score)
                 task_scores.append(score)
             else:
                 for task_idx in range(data.y.shape[1]):  # Loop over tasks
-                    valid_mask = ~torch.isnan(data.y[:, task_idx])  # Mask for valid labels in this task
+                    # Mask for valid labels in this task
+                    valid_mask = ~torch.isnan(data.y[:, task_idx])
                     if valid_mask.sum() > 0:  # Only compute metric if there are valid labels
                         if task_type == "classification":
-                            preds = torch.sigmoid(out[valid_mask, task_idx]).cpu().numpy()
+                            preds = torch.sigmoid(
+                                out[valid_mask, task_idx]).cpu().numpy()
                             labels = data.y[valid_mask, task_idx].cpu().numpy()
-                            if np.unique(labels).size > 1:  # Avoid invalid ROC-AUC computation
+                            # Avoid invalid ROC-AUC computation
+                            if np.unique(labels).size > 1:
                                 score = roc_auc_score(labels, preds)
                                 task_scores.append(score)
                         elif task_type == "regression":
                             preds = out[valid_mask, task_idx].cpu().numpy()
                             labels = data.y[valid_mask, task_idx].cpu().numpy()
-                            score = root_mean_squared_error(labels, preds)  # RMSE
+                            score = root_mean_squared_error(
+                                labels, preds)  # RMSE
                             task_scores.append(score)
     mean_score = np.mean(task_scores)
     # Average metric across tasks
     return mean_score
 
 
-
-
-def train_and_evaluate(dataset, test_dataset, layer_type, hidden_dim, num_layers, batch_size, epochs, lr, t_structure, t_feature, device, pos_encodings = False):
+def train_and_evaluate(dataset,
+                       test_dataset,
+                       layer_type,
+                       hidden_dim,
+                       num_layers,
+                       batch_size,
+                       epochs,
+                       lr,
+                       t_structure,
+                       t_feature,
+                       device,
+                       pos_encodings=False,
+                       pos_dim=20):
     """
     Train and evaluate the FlexibleGNN on the given dataset with added noise.
 
@@ -189,32 +207,39 @@ def train_and_evaluate(dataset, test_dataset, layer_type, hidden_dim, num_layers
     pe_original_dim = 20
 
     # Create noisy copies of datasets
-    noisy_train_dataset = add_noise_to_dataset(copy.deepcopy(dataset), t_structure, t_feature)
+    noisy_train_dataset = add_noise_to_dataset(
+        copy.deepcopy(dataset), t_structure, t_feature)
     if pos_encodings:
         pe_dim = int(0.2 * hidden_dim)
-        noisy_train_dataset = add_pe_to_dataset(noisy_train_dataset, pe_original_dim, attr_name='pe')
+        noisy_train_dataset = add_pe_to_dataset(
+            noisy_train_dataset, pe_original_dim, attr_name='pe')
     else:
         pe_dim = 0
 
-    noisy_train_loader = DataLoader(noisy_train_dataset, batch_size=batch_size, shuffle=True)
+    noisy_train_loader = DataLoader(
+        noisy_train_dataset, batch_size=batch_size, shuffle=True)
 
-    noisy_test_dataset = add_noise_to_dataset(copy.deepcopy(test_dataset), t_structure, t_feature)
-    noisy_test_loader = DataLoader(noisy_test_dataset, batch_size=batch_size, shuffle=False)
+    noisy_test_dataset = add_noise_to_dataset(
+        copy.deepcopy(test_dataset), t_structure, t_feature)
+    noisy_test_loader = DataLoader(
+        noisy_test_dataset, batch_size=batch_size, shuffle=False)
     if pos_encodings:
-        noisy_test_dataset = add_pe_to_dataset(noisy_test_dataset, pe_original_dim, attr_name='pe')
+        noisy_test_dataset = add_pe_to_dataset(
+            noisy_test_dataset, pe_original_dim, attr_name='pe')
 
     # Get dataset dimensions
     node_in_dim = dataset.num_node_features
-    edge_in_dim = dataset.num_edge_features if hasattr(dataset, "num_edge_features") else 0
+    edge_in_dim = dataset.num_edge_features if hasattr(
+        dataset, "num_edge_features") else 0
     num_classes = dataset[0].y.shape[-1] if task_type == "classification" or task_type == "multiclass-classification" else 1
 
     gin_model_kwargs = {
-    "eps": 0,  # Initial epsilon value for the learnable scalar.
-    "train_eps": True,  # Allow epsilon to be learnable.
+        "eps": 0,  # Initial epsilon value for the learnable scalar.
+        "train_eps": True,  # Allow epsilon to be learnable.
     }
     gcn_model_kwargs = {
-    "add_self_loops": True,  # Whether to add self-loops to the graph.
-    "normalize": True,       # Whether to apply symmetric normalization.
+        "add_self_loops": True,  # Whether to add self-loops to the graph.
+        "normalize": True,       # Whether to apply symmetric normalization.
     }
     gat_model_kwargs = {
         "heads": 4,             # Number of attention heads.
@@ -224,7 +249,8 @@ def train_and_evaluate(dataset, test_dataset, layer_type, hidden_dim, num_layers
     }
     gps_model_kwargs = {
         "heads": 4,                  # Number of attention heads.
-        "attn_type": "multihead",    # Type of attention ("multihead" or "performer").
+        # Type of attention ("multihead" or "performer").
+        "attn_type": "multihead",
         "attn_kwargs": {
             "dropout": 0.5          # Dropout for attention.
         },
@@ -233,7 +259,8 @@ def train_and_evaluate(dataset, test_dataset, layer_type, hidden_dim, num_layers
         "norm": "batch_norm",        # Normalization method for GPS layers.
     }
 
-    kwarg_lookup = {"gin": gin_model_kwargs, "gcn": gcn_model_kwargs, "gat": gat_model_kwargs, "gps": gps_model_kwargs}
+    kwarg_lookup = {"gin": gin_model_kwargs, "gcn": gcn_model_kwargs,
+                    "gat": gat_model_kwargs, "gps": gps_model_kwargs}
 
     # Initialize model
     # model = FlexibleGNN(
@@ -274,13 +301,13 @@ def train_and_evaluate(dataset, test_dataset, layer_type, hidden_dim, num_layers
     #     pe_dim=20
     # .to(device))
 
-
     # Initialize optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     # Training loop
-    for epoch in tqdm(range(1, epochs + 1), leave = False):
-        train_loss = train(model, optimizer, noisy_train_loader, device, task_type)
+    for epoch in tqdm(range(1, epochs + 1), leave=False):
+        train_loss = train(
+            model, optimizer, noisy_train_loader, device, task_type)
     # Evaluate on the final epoch
     test_performance = evaluate(model, noisy_test_loader, device, task_type)
 
@@ -325,12 +352,15 @@ def train_and_evaluate_linear(
     task_level, task_type = infer_task_type(dataset)
 
     # Add noise to datasets
-    noisy_train_dataset = add_noise_to_dataset(copy.deepcopy(dataset), t_structure, t_feature)
-    noisy_test_dataset = add_noise_to_dataset(copy.deepcopy(test_dataset), t_structure, t_feature)
+    noisy_train_dataset = add_noise_to_dataset(
+        copy.deepcopy(dataset), t_structure, t_feature)
+    noisy_test_dataset = add_noise_to_dataset(
+        copy.deepcopy(test_dataset), t_structure, t_feature)
 
     # Initialize the feature extraction model
     node_in_dim = dataset.num_node_features
-    edge_in_dim = dataset.num_edge_features if hasattr(dataset, "num_edge_features") else 0
+    edge_in_dim = dataset.num_edge_features if hasattr(
+        dataset, "num_edge_features") else 0
     model = FeatureExtractorGNN(
         layer_type=layer_type,
         node_in_dim=node_in_dim,
@@ -347,7 +377,8 @@ def train_and_evaluate_linear(
         train_targets = []
         for data in noisy_train_dataset:
             data = data.to(device)
-            out = model(data) # data.x.float(), data.edge_index, data.edge_attr.float(), data.batch)
+            # data.x.float(), data.edge_index, data.edge_attr.float(), data.batch)
+            out = model(data)
             train_embeddings.append(out.cpu().numpy())
             train_targets.append(data.y.cpu().numpy())
         train_embeddings = np.vstack(train_embeddings)
@@ -358,7 +389,8 @@ def train_and_evaluate_linear(
         test_targets = []
         for data in noisy_test_dataset:
             data = data.to(device)
-            out = model(data) # data.x.float(), data.edge_index, data.edge_attr.float(), data.batch)
+            # data.x.float(), data.edge_index, data.edge_attr.float(), data.batch)
+            out = model(data)
             test_embeddings.append(out.cpu().numpy())
             test_targets.append(data.y.cpu().numpy())
         test_embeddings = np.vstack(test_embeddings)
@@ -377,7 +409,8 @@ def train_and_evaluate_linear(
                     train_embeddings[valid_train_mask],
                     train_targets[valid_train_mask, task_idx],
                 )
-                preds = lin_model.predict_proba(test_embeddings[valid_test_mask])[:, 1]
+                preds = lin_model.predict_proba(
+                    test_embeddings[valid_test_mask])[:, 1]
                 labels = test_targets[valid_test_mask, task_idx]
                 if np.unique(labels).size > 1:  # Avoid invalid ROC-AUC computation
                     score = roc_auc_score(labels, preds)
@@ -419,22 +452,26 @@ class UnifyTUFormat:
             torch_geometric.data.Data: The transformed graph data object.
         """
         # Ensure the input is a PyTorch Geometric Data object
-        assert isinstance(data, Data), "Input must be a torch_geometric.data.Data object"
+        assert isinstance(
+            data, Data), "Input must be a torch_geometric.data.Data object"
         # Example modification: Add a feature column to node features
         if data.x is not None:
             pass
         else:
-            data.x = torch.ones(data.num_nodes, 1)  # Create features if none exist
+            # Create features if none exist
+            data.x = torch.ones(data.num_nodes, 1)
 
         # Example modification: Add a feature column to node features
         if data.edge_attr is not None:
             pass
         else:
-            data.edge_attr = torch.ones(data.num_edges, 1)  # Create features if none exist
+            # Create features if none exist
+            data.edge_attr = torch.ones(data.num_edges, 1)
 
         data.y = F.one_hot(data.y, num_classes=self.num_classes)
 
         return data
+
 
 def load_tu_dataset(dataset_name):
     """
@@ -443,45 +480,65 @@ def load_tu_dataset(dataset_name):
     """
     if dataset_name.startswith("TUDataset"):
         dataset = TUDataset(root=f"./data/{dataset_name}", name=dataset_name.split(":")[1],
-                             use_edge_attr=True, use_node_attr=True, transform=UnifyTUFormat(num_classes=tu_classes_lookup[dataset_name.split(":")[1]]))
+                            use_edge_attr=True, use_node_attr=True, transform=UnifyTUFormat(num_classes=tu_classes_lookup[dataset_name.split(":")[1]]))
         dataset = dataset.shuffle()
-        
 
     elif dataset_name.startswith("GNNBenchmark"):
-        dataset = GNNBenchmarkDataset(root=f"./data/{dataset_name}", name=dataset_name.split(":")[1])
+        dataset = GNNBenchmarkDataset(
+            root=f"./data/{dataset_name}", name=dataset_name.split(":")[1])
     else:
         dataset = None
     return dataset
 
 
-def evaluate_main(dataset="ogbg-molclintox",
-         layer_type="gin", 
-         hidden_dim=100,
-         num_layers=3,
-         batch_size=128,
-         epochs=25,
-         lr=0.001, 
-         t_structure=0., 
-         t_feature=0.,
-         linear = False,
-         pos_encodings = False):
+# def evaluate_main(dataset: str = "ogbg-molclintox",
+#                   layer_type: str = "gin",
+#                   hidden_dim: int = 100,
+#                   num_layers: int = 3,
+#                   batch_size: int = 512,
+#                   epochs: int = 25,
+#                   lr: float = 0.001,
+#                   t_structure: float = 0.,
+#                   t_feature: float = 0.,
+#                   linear: bool = False,
+#                   pos_encodings: bool = False,
+#                   pos_dim: int = 20,
+#                   avoid_cuda: bool = True,
+#                   **kwargs):
+
+def evaluate_main(args, 
+                  t_feature = 0,
+                  t_structure = 0,
+                  eval_on_val = False):
+    dataset = args.dataset
+    layer_type = args.layer_type
+    hidden_dim = args.hidden_dim
+    num_layers = args.num_layers
+    batch_size = args.batch_size
+    epochs = args.epochs
+    lr = args.lr
+    linear = args.use_linear
+    pos_encodings = args.structure
+    pos_dim = args.pos_dim
+    avoid_cuda = args.no_cuda
 
     # Load dataset
     if dataset.startswith("ogbn"):
         from ogb.nodeproppred import PygNodePropPredDataset
         dataset = PygNodePropPredDataset(name=dataset)
 
-
         split_idx = dataset.get_idx_split()
         train_dataset = dataset[split_idx["train"]]
+        val_dataset = dataset[split_idx["val"]]
         test_dataset = dataset[split_idx["test"]]
+
     elif dataset.startswith("ogbg"):
         from ogb.graphproppred import PygGraphPropPredDataset
         dataset = PygGraphPropPredDataset(name=dataset)
-    
 
         split_idx = dataset.get_idx_split()
         train_dataset = dataset[split_idx["train"]]
+        val_dataset = dataset[split_idx["valid"]]
         test_dataset = dataset[split_idx["test"]]
 
     elif dataset.startswith("TUDataset") or dataset.startswith("GNNBenchmark"):
@@ -494,12 +551,13 @@ def evaluate_main(dataset="ogbg-molclintox",
         val_dataset = dataset[split_ns[0]:split_ns[0] + split_ns[1]]
         test_dataset = dataset[split_ns[0] + split_ns[1]:]
 
-
     elif dataset.startswith("synth"):
         if dataset.endswith("feature") or dataset.endswith("structure"):
-            dataset = SyntheticDataset(root="data/synthetic", label_type = dataset)
+            dataset = SyntheticDataset(
+                root="data/synthetic", label_type=dataset)
         else:
-            dataset = SyntheticDouble(root="data/synthetic", label_type=dataset)
+            dataset = SyntheticDouble(
+                root="data/synthetic", label_type=dataset)
 
         split_props = 0.7, 0.2, 0.1
         split_ns = [int(prop * len(dataset)) for prop in split_props]
@@ -510,19 +568,20 @@ def evaluate_main(dataset="ogbg-molclintox",
     else:
         raise ValueError(f"Unsupported dataset: {dataset}")
 
-
     # Train and evaluate
-    if torch.cuda.is_available():
+    if torch.cuda.is_available() and not avoid_cuda:
         dev_string = "cuda"
     else:
+        print(f" Defaulting to CPU, Cuda was available: {torch.cuda.is_available()}")
         dev_string = "cpu"
 
     device = torch.device(dev_string)
     if not linear:
-        print(f"Running {dataset} with noise levels: {t_structure}, {t_feature}")
+        print(
+            f"Running {dataset} with noise levels: {t_structure}, {t_feature}")
         score, task_type = train_and_evaluate(
             dataset=train_dataset,
-            test_dataset=test_dataset,
+            test_dataset=test_dataset if not eval_on_val else val_dataset,
             layer_type=layer_type,
             hidden_dim=hidden_dim,
             num_layers=num_layers,
@@ -532,13 +591,14 @@ def evaluate_main(dataset="ogbg-molclintox",
             t_structure=t_structure,
             t_feature=t_feature,
             device=device,
-            pos_encodings=pos_encodings
+            pos_encodings=pos_encodings,
+            pos_dim=pos_dim
         )
     else:
         print("Training linear model")
         score, task_type = train_and_evaluate_linear(
             dataset=train_dataset,
-            test_dataset=test_dataset,
+            test_dataset=test_dataset if not eval_on_val else val_dataset,
             layer_type=layer_type,
             hidden_dim=hidden_dim,
             num_layers=num_layers,

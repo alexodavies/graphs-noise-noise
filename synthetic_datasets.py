@@ -6,7 +6,7 @@ import networkx as nx
 from tqdm import tqdm
 from random import random
 from torch_geometric.data import Data, InMemoryDataset
-from torch_geometric.utils import to_networkx, erdos_renyi_graph, from_networkx
+from torch_geometric.utils import to_networkx, erdos_renyi_graph, from_networkx, dense_to_sparse
 import networkx as nx
 import copy
 
@@ -76,8 +76,8 @@ def noise_and_visualise(dataset):
         g0 = to_networkx(d0_noisy, to_undirected=True)
         g1 = to_networkx(d1_noisy, to_undirected=True)
         
-        axes[0,i].set_title(f"Nodes: {d0_noisy.num_nodes}, edges: {d0_noisy.num_edges}")
-        axes[1,i].set_title(f"Nodes: {d1_noisy.num_nodes}, edges: {d1_noisy.num_edges}")
+        # axes[0,i].set_title(f"Nodes: {d0_noisy.num_nodes}, edges: {d0_noisy.num_edges}")
+        # axes[1,i].set_title(f"Nodes: {d1_noisy.num_nodes}, edges: {d1_noisy.num_edges}")
 
         nx.draw_networkx_edges(g0, pos = pos0, ax=axes[0, i], node_size=0, edge_color="gray")
         nx.draw_networkx_edges(g1, pos = pos1, ax=axes[1, i], node_size=0, edge_color="gray")
@@ -102,8 +102,8 @@ def noise_and_visualise(dataset):
 
         # axes[2,i].set_axis_off()
 
-    axes[0,0].set_ylabel("Ladder Ring", rotation = "vertical")
-    axes[1,0].set_ylabel("Hex Grid", rotation = "vertical")
+    axes[0,0].set_ylabel("Erdos-Renyi", rotation = "vertical")
+    axes[1,0].set_ylabel("Ladder Ring", rotation = "vertical")
     axes[2,0].set_ylabel("Node Features", rotation = "vertical")
     axes[3,0].set_ylabel("Degrees", rotation = "vertical")
 
@@ -258,14 +258,29 @@ def erdos_renyi_from_data(data):
     n_nodes = data.num_nodes
     n_edges = data.num_edges
 
-    potential_connections = 2 * (n_nodes**2)
+    potential_connections = (n_nodes**2) - n_nodes
 
     density = n_edges / potential_connections
 
-    G_pyg = from_networkx(nx.erdos_renyi_graph(n_edges, density))
+    # edges = set()
 
-    data.edge_index = G_pyg.edge_index #erdos_renyi_graph(num_nodes=n_nodes, edge_prob=density, directed=False)
-    data.num_nodes = torch.max(torch.unique(data.edge_index)) + 1
+    # for node1 in range(n_nodes):
+    #     for node2 in range(n_nodes):
+    #         if torch.rand(1) < density:
+    #             edges.add((node1, node2))
+
+    # edge_index = torch.tensor(list(edges), dtype = torch.long).T
+
+    dense = torch.rand((n_nodes, n_nodes)) < density
+    dense.triu = dense.tril
+    # print(dense)
+    sparse = dense_to_sparse(dense)[0].to(torch.long)
+
+
+    # G_pyg = from_networkx(nx.erdos_renyi_graph(n_edges, density))
+
+    data.edge_index = sparse #G_pyg.edge_index #erdos_renyi_graph(num_nodes=n_nodes, edge_prob=density, directed=False)
+    #data.num_nodes = torch.max(torch.unique(data.edge_index)) + 1
     return data
 
 
@@ -310,7 +325,7 @@ class SyntheticDataset(InMemoryDataset):
             # height = np.random.randint(2, 4)
 
             # num_edges = 3*width*height - (width+height+3)/2 + 2*(width + height)
-            num_edges = int(2*np.random.randint(24,256))
+            num_edges = int(2*np.random.randint(24,128))
 
             # num_edges = 
 
@@ -383,7 +398,7 @@ class SyntheticDouble(InMemoryDataset):
             # height = np.random.randint(2, 8)
 
             # num_edges = 3*width*height - (width+height+3)/2 + 2*(width + height)
-            num_edges = int(2*np.random.randint(24,256))
+            num_edges = int(2*np.random.randint(24,128))
 
 
             if is_coupled:

@@ -1,0 +1,32 @@
+name: ogbg-moltox21
+program: basic_performance.py
+project: performance-ogbg
+entity: hierarchical-diffusion
+method: bayes
+metric:
+  name: Performance
+  goal: minimize
+parameters:
+  dataset:
+    value: ogbg-moltox21
+  layer_type:
+    values:
+    - gcn
+    - gin
+    - gat
+    - gps
+  hidden_dim:
+    min: 16
+    max: 512
+  num_layers:
+    min: 1
+    max: 10
+  batch_size:
+    min: 16
+    max: 1024
+  epochs:
+    min: 10
+    max: 50
+  lr:
+    min: 0.0001
+    max: 0.01

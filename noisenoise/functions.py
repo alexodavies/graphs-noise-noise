@@ -4,7 +4,7 @@ from .feature_noise import add_continuous_feature_noise, add_discrete_feature_no
 from .structure_noise import add_structure_noise, add_structure_noise_degree_preserving
 
 def add_noise_to_graph(data, t_structure, t_feature):
-    data = add_structure_noise(data, t_structure**2)
+    data = add_structure_noise(data, t_structure)
     # data = add_discrete_feature_noise(data, t_feature)
     # data = shuffle_categorical_feature_noise(data, t_feature)
     # data = add_continuous_feature_noise(data, t_feature)
