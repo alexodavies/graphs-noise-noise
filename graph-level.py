@@ -18,7 +18,7 @@ def evaluate_dataset(args):
     use_linear = args.use_linear
 
     if "synth" in dataset:
-        project = "noise-synthetics-benchmarks"
+        project = "noise-synthetics-benchmarks-fixed-nnd"
     elif "ogbg" in dataset:
         project = "noise-ogbg"
     elif "TU" in dataset:
