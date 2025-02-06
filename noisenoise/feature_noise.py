@@ -277,6 +277,46 @@ def dataset_shuffle_node_feature_noise(dataset, t):
 
     return dataset
 
+def dataset_feature_ranges(dataset):
+    """
+    Returns the min and max of each feature in a graph dataset
+    """
+
+
+    has_x = dataset[0].x is not None
+    has_edge_attr = dataset[0].edge_attr is not None
+
+    if has_x:
+        # Collect all node features across the dataset
+        all_x = []
+        for data in dataset:
+            all_x.append(data.x)
+        all_x = torch.cat(all_x, dim=0)
+
+        min_x = torch.min(all_x, 0)[0]
+        max_x = torch.max(all_x, 0)[0]
+    else:
+        min_x = None
+        max_x = None
+
+    if has_edge_attr:
+        # Collect all edge attributes across the dataset
+        all_edge_attr = []
+        for data in dataset:
+            all_edge_attr.append(data.edge_attr)
+        all_edge_attr = torch.cat(all_edge_attr, dim=0)
+
+        min_edge_attr = torch.min(all_edge_attr, 0)[0]
+        max_edge_attr = torch.max(all_edge_attr, 0)[0]
+    else:
+        min_edge_attr = None
+        max_edge_attr = None
+
+    return min_x, max_x, min_edge_attr, max_edge_attr
+
+    
+
+
 
     # for data in dataset:
 

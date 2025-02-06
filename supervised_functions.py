@@ -506,10 +506,10 @@ def load_tu_dataset(dataset_name):
 #                   avoid_cuda: bool = True,
 #                   **kwargs):
 
-def evaluate_main(args, 
-                  t_feature = 0,
-                  t_structure = 0,
-                  eval_on_val = False):
+def evaluate_main(args,
+                  t_feature=0,
+                  t_structure=0,
+                  eval_on_val=False):
     dataset = args.dataset
     layer_type = args.layer_type
     hidden_dim = args.hidden_dim
@@ -572,13 +572,12 @@ def evaluate_main(args,
     if torch.cuda.is_available() and not avoid_cuda:
         dev_string = "cuda"
     else:
-        print(f" Defaulting to CPU, Cuda was available: {torch.cuda.is_available()}")
+        print(
+            f" Defaulting to CPU, Cuda was available: {torch.cuda.is_available()}")
         dev_string = "cpu"
 
     device = torch.device(dev_string)
     if not linear:
-        print(
-            f"Running {dataset} with noise levels: {t_structure}, {t_feature}")
         score, task_type = train_and_evaluate(
             dataset=train_dataset,
             test_dataset=test_dataset if not eval_on_val else val_dataset,

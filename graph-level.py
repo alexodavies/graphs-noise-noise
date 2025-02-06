@@ -28,8 +28,10 @@ def evaluate_dataset(args):
     pos_included_string = "-pos" if args.structure else ""
     wandb.init(project= project, # "noise-synthetics-benchmarks",  # + "-linear" if use_linear else "",
                entity="hierarchical-diffusion",
-               name=args.layer_type + '-' + dataset + pos_included_string,
+               name=args.layer_type + '-' + dataset + pos_included_string + "-ER-swapping",
                config=args)
+    
+    wandb.log({"Noise type":"ER-Swapping"})
 
     result_dict = {"dataset": dataset}
     structure_performances = dict()
@@ -69,19 +71,19 @@ def evaluate_dataset(args):
                 repeat_pbar.set_postfix_str(pbar_string)
 
                 continue
+            else:
+                struc, tt = evaluate_main(args, t_structure = ts[ti])
+                ti_performances_structure.append(struc)
 
-            struc, tt = evaluate_main(args, t_structure = ts[ti])
-            ti_performances_structure.append(struc)
 
 
+                # feat, tt = evaluate_main(dataset=dataset, t_feature=ts[ti],
+                #                          linear=use_linear, layer_type=args.layer, pos_encodings=args.structure)
+                feat, tt = evaluate_main(args, t_feature = ts[ti])
+                ti_performances_feature.append(feat)
 
-            # feat, tt = evaluate_main(dataset=dataset, t_feature=ts[ti],
-            #                          linear=use_linear, layer_type=args.layer, pos_encodings=args.structure)
-            feat, tt = evaluate_main(args, t_feature = ts[ti])
-            ti_performances_feature.append(feat)
-
-            pbar_string = f"Struc: {struc}, feat: {feat}"
-            repeat_pbar.set_postfix_str(pbar_string)
+                pbar_string = f"Struc: {struc}, feat: {feat}"
+                repeat_pbar.set_postfix_str(pbar_string)
 
         # Log intermediate results to wandb
         wandb.log({
@@ -99,10 +101,10 @@ def evaluate_dataset(args):
     result_dict["feature"] = feature_performances
     result_dict["task_type"] = tt
     result_dict["linear"] = use_linear
-    result_dict["layer"] = args.layer
+    result_dict["layer"] = args.layer_type
 
     image_path = plot_results(
-        result_dict, extra_save_string=args.layer, return_path=True)
+        result_dict, extra_save_string=args.layer_type, return_path=True)
 
     wandb.log({"Media/Result-Image": wandb.Image(image_path)})
 
@@ -140,7 +142,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=512,
+        default=256,
         help="Batch size for training (default: 512)"
     )
     parser.add_argument(

@@ -9,6 +9,7 @@ from torch_geometric.data import Data, InMemoryDataset
 from torch_geometric.utils import to_networkx, erdos_renyi_graph, from_networkx, dense_to_sparse
 import networkx as nx
 import copy
+from noisenoise import erdos_renyi_from_data
 
 from noisenoise import add_noise_to_dataset
 
@@ -196,13 +197,31 @@ def generate_circular_ladder_graph(num_edges: int) -> Data:
 
     return data
 
+# def generate_bimodal_nodes(data, mean=1, dev=1):
+#     """Attaches a specified normal distribution to the nodes of the input data."""
+#     n_nodes = data.num_nodes
+#     n_features = 5
+
+#     # Generate normal node features
+#     data.x = torch.randn(n_nodes, n_features) * dev + mean
+#     return data
+
+# def generate_bimodal_edges(data, mean=1, dev=1):
+#     """Attaches a specified normal distribution to the nodes of the input data."""
+#     n_edges = data.num_edges
+#     n_features = 5
+
+#     # Generate normal node features
+#     data.edge_attr = torch.randn(n_edges, n_features) * dev + mean
+#     return data
+
 def generate_bimodal_nodes(data, mean=1, dev=1):
     """Attaches a specified normal distribution to the nodes of the input data."""
     n_nodes = data.num_nodes
     n_features = 5
 
     # Generate normal node features
-    data.x = torch.randn(n_nodes, n_features) * dev + mean
+    data.x = torch.ones(n_nodes, n_features) * mean #torch.randn(n_nodes, n_features) * dev + mean
     return data
 
 def generate_bimodal_edges(data, mean=1, dev=1):
@@ -211,7 +230,7 @@ def generate_bimodal_edges(data, mean=1, dev=1):
     n_features = 5
 
     # Generate normal node features
-    data.edge_attr = torch.randn(n_edges, n_features) * dev + mean
+    data.edge_attr = torch.ones(n_edges, n_features) * mean  # torch.randn(n_edges, n_features) * dev + mean
     return data
 
 
@@ -253,40 +272,12 @@ def generate_triangular_grid(resolution=3):
 
 
 
-def erdos_renyi_from_data(data):
-    """Generates a random graph of the same density as the input"""
-    n_nodes = data.num_nodes
-    n_edges = data.num_edges
 
-    potential_connections = (n_nodes**2) - n_nodes
-
-    density = n_edges / potential_connections
-
-    # edges = set()
-
-    # for node1 in range(n_nodes):
-    #     for node2 in range(n_nodes):
-    #         if torch.rand(1) < density:
-    #             edges.add((node1, node2))
-
-    # edge_index = torch.tensor(list(edges), dtype = torch.long).T
-
-    dense = torch.rand((n_nodes, n_nodes)) < density
-    dense.triu = dense.tril
-    # print(dense)
-    sparse = dense_to_sparse(dense)[0].to(torch.long)
-
-
-    # G_pyg = from_networkx(nx.erdos_renyi_graph(n_edges, density))
-
-    data.edge_index = sparse #G_pyg.edge_index #erdos_renyi_graph(num_nodes=n_nodes, edge_prob=density, directed=False)
-    #data.num_nodes = torch.max(torch.unique(data.edge_index)) + 1
-    return data
 
 
 
 class SyntheticDataset(InMemoryDataset):
-    def __init__(self, root, label_type, num_samples=8000, transform=None, pre_transform=None):
+    def __init__(self, root, label_type, num_samples=3200, transform=None, pre_transform=None):
         self.label_type = label_type
         self.num_samples = num_samples
         super(SyntheticDataset, self).__init__(root, transform, pre_transform)
@@ -333,16 +324,20 @@ class SyntheticDataset(InMemoryDataset):
             structure_label = 1 if is_sphere else 0    
             feature_label = 1 if random() > 0.5 else 0
 
+
+
             # if is_sphere:
             #     data = generate_hexagonal_grid_graph(width = width, height = height)
             # else:
             data = generate_circular_ladder_graph(num_edges=num_edges)
+
+            data = generate_bimodal_nodes(data, mean=2*(feature_label-0.5))
+            data = generate_bimodal_edges(data, mean=2*(feature_label-0.5))
             if is_sphere:
                 data = erdos_renyi_from_data(data)
 
             # mean = 1 if random() > 0.5 else -1
-            data = generate_bimodal_nodes(data, mean=2*(feature_label-0.5))
-            data = generate_bimodal_edges(data, mean=2*(feature_label-0.5))
+
 
             data.y = torch.tensor([feature_label if is_feature else structure_label], dtype=torch.long)
             data_list.append(data)
@@ -359,7 +354,7 @@ class SyntheticDataset(InMemoryDataset):
     
 
 class SyntheticDouble(InMemoryDataset):
-    def __init__(self, root, label_type, num_samples=8000, transform=None, pre_transform=None):
+    def __init__(self, root, label_type, num_samples=3200, transform=None, pre_transform=None):
         self.label_type = label_type
         self.num_samples = num_samples
         super(SyntheticDouble, self).__init__(root, transform, pre_transform)
@@ -426,12 +421,13 @@ class SyntheticDouble(InMemoryDataset):
             #     data = generate_circular_ladder_graph(num_edges=num_edges)
 
             data = generate_circular_ladder_graph(num_edges=num_edges)
+            data = generate_bimodal_nodes(data, mean= -1 if is_neg_mean else 1)
+            data = generate_bimodal_edges(data, mean= -1 if is_neg_mean else 1)
             if not is_ladder:
                 data = erdos_renyi_from_data(data)
 
             # mean = 1 if random() > 0.5 else -1
-            data = generate_bimodal_nodes(data, mean= -1 if is_neg_mean else 1)
-            data = generate_bimodal_edges(data, mean= -1 if is_neg_mean else 1)
+
 
             data.y = torch.tensor(label, dtype=torch.long)
             data_list.append(data)

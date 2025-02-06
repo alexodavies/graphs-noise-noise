@@ -9,7 +9,7 @@ datasets=(
 )
 
 # Define the list of GNN layers
-layers=("gcn" "gin" "gat" "gps")
+layers=("gin" "gcn" "gat")
 
 # Define the structure options
 structures=("True" "False")
@@ -41,7 +41,6 @@ for dataset in "${datasets[@]}"; do
             --dataset "$dataset" \
             --n_noise_levels "$n_noise_levels" \
             --n_repeats "$n_repeats" \
-            --use_linear False \
             --layer "$layer"
         # done
     done
@@ -56,7 +55,6 @@ for dataset in "${datasets[@]}"; do
             --dataset "$dataset" \
             --n_noise_levels "$n_noise_levels" \
             --n_repeats "$n_repeats" \
-            --use_linear False \
             --structure True \
             --layer "$layer"
         # done

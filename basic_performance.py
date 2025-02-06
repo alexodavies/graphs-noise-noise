@@ -23,7 +23,7 @@ def evaluate_dataset(args):
 
     use_linear = False  # TODO: fix code - currently being set to true by bash script
     pos_included_string = "-pos" if args.structure else ""
-    wandb.init(project= project, # "noise-synthetics-benchmarks",  # + "-linear" if use_linear else "",
+    wandb.init(project=project,  # "noise-synthetics-benchmarks",  # + "-linear" if use_linear else "",
                entity="hierarchical-diffusion",
                name=args.layer_type + '-' + dataset + pos_included_string,
                config=args)
@@ -39,8 +39,7 @@ def evaluate_dataset(args):
     if "classification" in tt:
         performance = 1-performance
 
-    wandb.log({"Performance":performance})
-
+    wandb.log({"Performance": performance})
 
 
 # # dataset: str = "ogbg-molclintox",
@@ -63,7 +62,7 @@ def evaluate_dataset(args):
 #         repeat_pbar = tqdm(
 #             range(n_repeats), desc="Running repeats", leave=False)
 #         for i_repeat in repeat_pbar:
-            
+
 #             # Same data for t = 0
 #             if ti == 0:
 #                 # struc, tt = evaluate_main(dataset=dataset, t_structure=ts[ti],
@@ -79,7 +78,6 @@ def evaluate_dataset(args):
 
 #             struc, tt = evaluate_main(args, t_structure = ts[ti])
 #             ti_performances_structure.append(struc)
-
 
 
 #             # feat, tt = evaluate_main(dataset=dataset, t_feature=ts[ti],
