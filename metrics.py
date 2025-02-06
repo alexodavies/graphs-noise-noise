@@ -107,7 +107,7 @@ def nnd(result_dict, extremis = False):
     if task == "classification":
         difference = np.array(feat_means) / np.array(struc_means)
     else:
-        difference = np.mean(struc_means) / np.array(feat_means)
+        difference = np.array(struc_means) / np.array(feat_means)
 
     return np.log(np.sum(difference) / difference.shape[0])
 
