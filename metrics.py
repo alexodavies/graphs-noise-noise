@@ -90,26 +90,52 @@ def nncr(result_dict):
 
     return np.log10(nncr)
 
-def nnd(result_dict, extremis = False):
 
+# Old version, non-symmetric
+# def nnd(result_dict, extremis = False):
+
+#     dataset = result_dict["dataset"]
+#     task = result_dict["task_type"]
+#     strucs = result_dict["structure"]
+#     feats = result_dict["feature"]
+#     ts = list(strucs.keys())
+    
+#     struc_means = [np.mean([float(val) for val in strucs[str(t)]]) for t in ts]
+#     feat_means = [np.mean([float(val) for val in feats[str(t)]]) for t in ts]
+
+#     if extremis:
+#         struc_means = [struc_means[-1]]
+#         feat_means = [feat_means[-1]]
+#     if task == "classification":
+#         difference = np.array(feat_means) / np.array(struc_means)
+#     else:
+#         difference = np.array(struc_means) / np.array(feat_means)
+
+#     return np.log(np.sum(difference) / difference.shape[0])
+
+# Now symmetric!
+def nnd(result_dict, extremis=False):
     dataset = result_dict["dataset"]
     task = result_dict["task_type"]
     strucs = result_dict["structure"]
     feats = result_dict["feature"]
     ts = list(strucs.keys())
-    
+
     struc_means = [np.mean([float(val) for val in strucs[str(t)]]) for t in ts]
     feat_means = [np.mean([float(val) for val in feats[str(t)]]) for t in ts]
 
     if extremis:
         struc_means = [struc_means[-1]]
         feat_means = [feat_means[-1]]
-    if task == "classification":
-        difference = np.array(feat_means) / np.array(struc_means)
-    else:
-        difference = np.array(struc_means) / np.array(feat_means)
 
-    return np.log(np.sum(difference) / difference.shape[0])
+    # Symmetric transformation
+    if "classification" in task:
+        log_difference = np.log(np.array(feat_means) / np.array(struc_means))
+    else:
+        log_difference = np.log(np.array(struc_means) / np.array(feat_means))
+
+    return np.mean(log_difference)
+
 
 def minmax_performance_structure(result_dict):
     dataset = result_dict["dataset"]
