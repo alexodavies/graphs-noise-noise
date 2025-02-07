@@ -26,8 +26,9 @@ def save_run(performance_dict):
         os.mkdir(f"results/{layer}")
 
     linear = '-linear' if performance_dict['linear'] else ""
+    pos = '-pos' if performance_dict['structure'] else ""
     
-    json_path = f"results/{layer}/{performance_dict['dataset']}{linear}.json"
+    json_path = f"results/{layer}/{performance_dict['dataset']}{linear}{pos}.json"
     with open(json_path, "w") as f:
         json.dump(performance_dict, f)
 

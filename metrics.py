@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import spearmanr
 import matplotlib.pyplot as plt
 
-def plot_results(result_dict, extra_save_string="", return_path = False):
+def plot_results(result_dict, extra_save_string="", return_path = False, default_xticks = False):
     fig, ax = plt.subplots(figsize=(4.5, 3))
     dataset = result_dict["dataset"]
     task_type = result_dict["task_type"]
@@ -24,6 +24,7 @@ def plot_results(result_dict, extra_save_string="", return_path = False):
     struc_devs = [np.std([float(val) for val in strucs[str(t)]]) for t in ts]
     feat_means = [np.mean([float(val) for val in feats[str(t)]]) for t in ts]
     feat_devs = [np.std([float(val) for val in feats[str(t)]]) for t in ts]
+
 
     ax.fill_between(ts, struc_means, feat_means, color = "gray", alpha = 0.4)
 
@@ -55,9 +56,13 @@ def plot_results(result_dict, extra_save_string="", return_path = False):
     ax.text(1.05, nnrd_root, f"$NNRD$:\n{np.around(nnd(result_dict), decimals = 3)}", 
         bbox=dict(facecolor='white', edgecolor='green', boxstyle='round'))
 
-    # Format x-axis ticks
-    ax.set_xticks(ts)  # Ensure all unique noise levels are shown
-    ax.set_xticklabels([f"{t:.1f}" for t in ts])  # Format as two decimal places
+    if not default_xticks:
+        # Format x-axis ticks
+        ax.set_xticks(ts)  # Ensure all unique noise levels are shown
+        ax.set_xticklabels([f"{t:.1f}" for t in ts])  # Format as two decimal places
+
+    else:
+        ax.set_xticks(np.linspace(0,1,11))
 
     ax.set_xlim([ts[0], 1.225])
 
@@ -123,6 +128,17 @@ def nnd(result_dict, extremis=False):
 
     struc_means = [np.mean([float(val) for val in strucs[str(t)]]) for t in ts]
     feat_means = [np.mean([float(val) for val in feats[str(t)]]) for t in ts]
+
+    start_struc = struc_means[0]
+    start_feat  = feat_means[0]
+
+    if "classification" in task:
+        struc_means /= start_struc
+        feat_means /= start_feat
+    
+    else:
+        struc_means = start_struc / struc_means
+        feat_means = start_feat / feat_means
 
     if extremis:
         struc_means = [struc_means[-1]]

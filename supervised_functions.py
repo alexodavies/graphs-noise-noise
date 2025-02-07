@@ -543,7 +543,6 @@ def evaluate_main(args,
 
     elif dataset.startswith("TUDataset") or dataset.startswith("GNNBenchmark"):
         dataset = load_tu_dataset(dataset)
-        print(f"Loaded: {dataset}")
 
         split_props = 0.7, 0.2, 0.1
         split_ns = [int(prop * len(dataset)) for prop in split_props]

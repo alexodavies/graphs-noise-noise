@@ -104,7 +104,7 @@ def evaluate_dataset(args):
     result_dict["layer"] = args.layer_type
 
     image_path = plot_results(
-        result_dict, extra_save_string=args.layer_type, return_path=True)
+        result_dict, extra_save_string=args.layer_type+pos_included_string, return_path=True)
 
     wandb.log({"Media/Result-Image": wandb.Image(image_path)})
 

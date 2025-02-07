@@ -9,7 +9,7 @@ datasets=(
 )
 
 # Define the list of GNN layers
-layers=("gin" "gcn" "gat")
+layers=("gps")
 
 # Define the structure options
 structures=("True" "False")
