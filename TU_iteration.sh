@@ -2,21 +2,23 @@
 
 # Define the list of OGB graph-level datasets
 datasets=(
-    TUDataset:ENZYMES
     TUDataset:PROTEINS
+    TUDataset:ENZYMES
+
 )
 
 # Define the list of GNN layers
-layers=("gcn" "gin" "gat")
+layers=("gps")
 
 # Define the structure options
-structures=("False" "True")
+structures=("True")
 
 # Set default values for the arguments
 n_noise_levels=10
 n_repeats=10
 epochs=100
 use_linear_flag="False"  # Hardcoded to False
+batch_size=48
 
 # Parse command-line arguments
 while getopts "n:r:" opt; do
@@ -41,7 +43,8 @@ for dataset in "${datasets[@]}"; do
             --n_noise_levels "$n_noise_levels" \
             --n_repeats "$n_repeats" \
             --layer "$layer" \
-            --epochs "$epochs"
+            --epochs "$epochs"\
+            --batch_size "$batch_size"
         # done
     done
 done
@@ -57,7 +60,8 @@ for dataset in "${datasets[@]}"; do
             --n_repeats "$n_repeats" \
             --structure True \
             --layer "$layer" \
-            --epochs "$epochs"
+            --epochs "$epochs"\
+            --batch_size "$batch_size"
         # done
     done
 done

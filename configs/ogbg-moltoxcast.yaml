@@ -1,0 +1,7 @@
+dataset: ogbg-moltoxcast
+layer_type: "gin"
+hidden_dim: 343
+num_layers: 2
+batch_size: 57
+epochs: 50
+lr: 0.002

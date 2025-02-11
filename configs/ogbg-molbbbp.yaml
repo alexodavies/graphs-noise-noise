@@ -1,0 +1,7 @@
+dataset: ogbg-molbbbp
+layer_type: "gat"
+hidden_dim: 464
+num_layers: 1
+batch_size: 145
+epochs: 50
+lr: 0.01

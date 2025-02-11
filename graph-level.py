@@ -1,4 +1,6 @@
 import warnings
+import os
+import yaml
 import argparse
 import numpy as np
 from tqdm import tqdm
@@ -116,6 +118,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Evaluate dataset with noise and repeats")
     parser.add_argument(
+        "--config",
+        type=str,
+        default="default",
+        help="The name of the config file to load from ./configs (default uses default arguments)"
+    )
+    parser.add_argument(
         "--dataset",
         type=str,
         default="ogbg-molclintox",
@@ -196,6 +204,19 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     print(args)
-    # quit()
+    if args.config != "default":
+        if args.config in os.listdir("configs"):
+            with open(f"configs/{args.config}", "r") as f:
+                cfg_args = yaml.safe_load(f)
+
+            for key, value in cfg_args.items():
+                if hasattr(args, key):
+                    setattr(args, key, value)
+
+            print(f"Updated config:")
+            print(args)
+
+        else:
+            raise KeyError(f"{args.config} not found in ./configs")
 
     evaluate_dataset(args)

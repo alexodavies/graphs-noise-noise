@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import copy
 from time import time
 from tqdm import tqdm
+from scipy.special import softmax as scipy_softmax
 
 # Import FlexibleGNN from a separate file
 from model import FlexibleGNN, FeatureExtractorGNN
@@ -53,12 +54,15 @@ def infer_task_type(dataset):
     # Task level: node or graph
     is_graph_level = hasattr(dataset[0], "y") and dataset[0].y.dim() > 0
     task_level = "graph" if is_graph_level else "node"
-
+    
     # Task type: classification or regression
     try:
         task_type = dataset.task_type
     except:
-        return task_level, "multiclass-classification"
+        if len(dataset[0].y.shape) == 2:
+            return task_level, "classification"
+        else:
+            return task_level, "multiclass-classification"
 
     if "classification" in task_type:
         return task_level, "classification"
@@ -143,6 +147,20 @@ def evaluate(model, loader, device, task_type):
                 if preds.shape[1] == 2:
                     preds = preds[:, 1]
                 labels = torch.argmax(data.y, dim=-1).cpu().numpy()
+
+                unique_labels = np.unique(labels)
+                num_classes = preds.shape[1]
+                # Check if all classes are present
+                if len(unique_labels) < num_classes:
+                    # Filter out columns of `preds` that don't have corresponding labels
+                    preds = preds[:, unique_labels]
+                    preds = scipy_softmax(preds, axis = -1)
+                    
+                    # Convert labels to indices within the batch's unique labels
+                    label_map = {label: idx for idx, label in enumerate(unique_labels)}
+                    labels = np.array([label_map[label] for label in labels])
+
+
                 score = roc_auc_score(labels, preds, multi_class="ovo")
                 task_scores.append(score)
                 task_scores.append(score)

@@ -1,0 +1,7 @@
+dataset: ogbg-moltox21
+layer_type: "gps"
+hidden_dim: 100
+num_layers: 3
+batch_size: 719
+epochs: 50
+lr: 0.002
