@@ -10,9 +10,9 @@ def add_noise_to_graph(data, t_structure, t_feature, min_x = 0, max_x = 0, min_a
 
     if random() < t_feature:
         if data.x is not None:
-            data.x = torch.rand_like(data.x) * (max_x-min_x) + min_x
+            data.x = torch.rand_like(data.x.float()) * (max_x-min_x) + min_x
         if data.edge_attr is not None:
-            data.edge_attr = torch.rand_like(data.edge_attr) * (max_attr-min_attr) + min_attr
+            data.edge_attr = torch.rand_like(data.edge_attr.float()) * (max_attr-min_attr) + min_attr
     # data = add_structure_noise(data, t_structure)
     # data = add_discrete_feature_noise(data, t_feature)
     # data = shuffle_categorical_feature_noise(data, t_feature)
