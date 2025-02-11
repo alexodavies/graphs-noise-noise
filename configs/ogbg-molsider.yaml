@@ -3,5 +3,5 @@ layer_type: "gin"
 hidden_dim: 219
 num_layers: 1
 batch_size: 233
-epochs: 50
+epochs: 42
 lr: 0.008

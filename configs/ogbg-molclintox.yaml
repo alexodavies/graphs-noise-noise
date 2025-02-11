@@ -3,5 +3,5 @@ layer_type: "gps"
 hidden_dim: 412
 num_layers: 1
 batch_size: 56
-epochs: 50
+epochs: 48
 lr: 0.004

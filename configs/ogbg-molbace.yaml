@@ -3,5 +3,5 @@ layer_type: "gat"
 hidden_dim: 409
 num_layers: 2
 batch_size: 219
-epochs: 50
+epochs: 29
 lr: 0.003
