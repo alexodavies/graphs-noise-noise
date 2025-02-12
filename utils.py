@@ -13,6 +13,7 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 from torch_geometric.utils import remove_self_loops
 from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims
+from metrics import nnd
 
 full_atom_feature_dims = get_atom_feature_dims()
 full_bond_feature_dims = get_bond_feature_dims()
@@ -24,7 +25,7 @@ def save_run(performance_dict):
         os.mkdir("results")
     if layer not in os.listdir("results"):
         os.mkdir(f"results/{layer}")
-
+    wandb.log({"NND":nnd(performance_dict)})
     linear = '-linear' if performance_dict['linear'] else ""
     pos = '-pos' if performance_dict['structure'] else ""
     
