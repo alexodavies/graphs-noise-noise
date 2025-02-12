@@ -28,7 +28,7 @@ structures=("False" "True")
 
 # Set default values for the arguments
 n_noise_levels=10
-n_repeats=10
+n_repeats=5
 epochs=50
 use_linear_flag="False"  # Hardcoded to False
 batch_size=128
