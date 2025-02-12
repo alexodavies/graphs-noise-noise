@@ -35,7 +35,7 @@ def evaluate_dataset(args):
     
     wandb.log({"Noise type":"ER-Swapping"})
 
-    result_dict = {"dataset": dataset}
+    result_dict = {"dataset": dataset, "pos":args.structure}
     structure_performances = dict()
     feature_performances = dict()
     ts = np.linspace(0, 1, n_noise_levels)

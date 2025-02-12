@@ -8,6 +8,7 @@ import copy
 from time import time
 from tqdm import tqdm
 from scipy.special import softmax as scipy_softmax
+import wandb
 
 # Import FlexibleGNN from a separate file
 from model import FlexibleGNN, FeatureExtractorGNN
@@ -303,6 +304,8 @@ def train_and_evaluate(dataset,
         pe_dim=pe_dim
     ).to(device)
 
+    wandb.watch(model)
+
     # model = FlexibleGNN(
     #     layer_type="gps",
     #     node_in_dim=28,
@@ -326,6 +329,8 @@ def train_and_evaluate(dataset,
     for epoch in tqdm(range(1, epochs + 1), leave=False):
         train_loss = train(
             model, optimizer, noisy_train_loader, device, task_type)
+        
+        wandb.log({"Train Loss":train_loss})
     # Evaluate on the final epoch
     test_performance = evaluate(model, noisy_test_loader, device, task_type)
 

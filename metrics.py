@@ -129,16 +129,32 @@ def nnd(result_dict, extremis=False):
     struc_means = [np.mean([float(val) for val in strucs[str(t)]]) for t in ts]
     feat_means = [np.mean([float(val) for val in feats[str(t)]]) for t in ts]
 
-    start_struc = struc_means[0]
-    start_feat  = feat_means[0]
+    global_min = min(np.min(feat_means), np.min(struc_means))
+    global_max = max(np.max(feat_means), np.max(struc_means))
 
     if "classification" in task:
-        struc_means /= start_struc
-        feat_means /= start_feat
-    
+        global_min = min(np.min(feat_means), np.min(struc_means))
+        feat_means -= global_min
+        struc_means -= global_min
+        global_max = max(np.max(feat_means), np.max(struc_means))
+        feat_means /= global_max
+        struc_means /= global_max
+
+
     else:
-        struc_means = start_struc / struc_means
-        feat_means = start_feat / feat_means
+        global_max = min(np.max(feat_means), np.max(struc_means))
+        feat_means -= global_max
+        struc_means -= global_max
+        global_min = min(np.min(feat_means), np.min(struc_means))
+        feat_means /= global_min
+        struc_means /= global_min
+
+    feat_means += 1
+    struc_means += 1
+
+    # print(struc_means, feat_means)
+
+
 
     if extremis:
         struc_means = [struc_means[-1]]

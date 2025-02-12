@@ -32,6 +32,10 @@ def save_run(performance_dict):
     with open(json_path, "w") as f:
         json.dump(performance_dict, f)
 
+    artifact = wandb.Artifact(name = "result_dict", type = "result_output")
+    artifact.add_file(local_path=json_path, name = "results.json")
+    artifact.save()
+
 def get_total_mol_onehot_dims():
     return np.sum(full_atom_feature_dims), np.sum(full_bond_feature_dims)
 
