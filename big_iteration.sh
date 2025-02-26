@@ -17,7 +17,6 @@ datasets=(
     ogbg-mollipo
     ogbg-molsider
     ogbg-moltox21
-    ogbg-moltoxcast
 )
 
 # Define the list of GNN layers
