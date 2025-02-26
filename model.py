@@ -1,12 +1,12 @@
 import torch
 from torch.nn import Linear, ReLU, Sequential, ModuleList, Embedding, BatchNorm1d
-from torch_geometric.nn import GCNConv, GINEConv, GATConv, GPSConv, global_add_pool, global_mean_pool
+from torch_geometric.nn import GCNConv, GINEConv, GATConv, GPSConv, global_add_pool, global_mean_pool, GATv2Conv
 
 class FlexibleGNN(torch.nn.Module):
     VALID_LAYERS = {
         "gcn": GCNConv,      # GCN does not use edge attributes
         "gin": GINEConv,     # GIN supports edge attributes
-        "gat": GATConv,      # GAT supports attention mechanism
+        "gat": GATv2Conv,      # GAT supports attention mechanism
         "gps": GPSConv,      # GPS combines local and global attention
     }
 
