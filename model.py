@@ -1,6 +1,7 @@
 import torch
 from torch.nn import Linear, ReLU, Sequential, ModuleList, Embedding, BatchNorm1d
 from torch_geometric.nn import GCNConv, GINEConv, GATConv, GPSConv, global_add_pool, global_mean_pool, GATv2Conv
+from models.graphormer import GraphormerLayer
 
 class FlexibleGNN(torch.nn.Module):
     VALID_LAYERS = {
@@ -8,12 +9,13 @@ class FlexibleGNN(torch.nn.Module):
         "gin": GINEConv,     # GIN supports edge attributes
         "gat": GATv2Conv,      # GAT supports attention mechanism
         "gps": GPSConv,      # GPS combines local and global attention
+        "graphormer": GraphormerLayer # Graphormer sequential model with global attention and shortest path PEs
     }
 
     def __init__(self, layer_type, node_in_dim, edge_in_dim, hidden_dim, num_classes, num_layers, task_type="graph", model_kwargs=None, pe_dim=0):
         """
         Args:
-            layer_type (str): Type of GNN layer to use ("gcn", "gin", "gat", "gps").
+            layer_type (str): Type of GNN layer to use ("gcn", "gin", "gat", "gps", "graphormer").
             node_in_dim (int): Input dimension of node features.
             edge_in_dim (int): Input dimension of edge features.
             hidden_dim (int): Hidden layer dimension.
@@ -87,6 +89,19 @@ class FlexibleGNN(torch.nn.Module):
                     )
                 )
                 self.gnn_layers.append(gnn_layer_type(channels=hidden_dim, conv=local_gnn, **model_kwargs))
+            elif layer_type == "graphormer":
+                num_heads = model_kwargs.get("heads", 1)
+                # Ensure hidden_dim is divisible by num_heads
+                if hidden_dim % num_heads != 0:
+                    new_hidden_dim = hidden_dim + (num_heads - hidden_dim % num_heads)
+                    print(f"Adjusting hidden_dim from {hidden_dim} to {new_hidden_dim} to be divisible by num_heads")
+                    hidden_dim = new_hidden_dim  # Adjust hidden_dim to nearest valid value
+
+                self.gnn_layers.append(
+                    gnn_layer_type(hidden_dim, **model_kwargs)  # Keep hidden_dim consistent
+                )
+
+                
 
                 # self.gnn_layers.append(gnn_layer_type(channels=hidden_dim, conv=local_gnn, **model_kwargs))
             else:  # For GCN and other layers
@@ -105,7 +120,7 @@ class FlexibleGNN(torch.nn.Module):
         edge_index = data.edge_index
         edge_attr = data.edge_attr
         batch = data.batch
-        pe = data.pe if self.use_pe else None
+        pe = data.pe if self.use_pe or self.layer_type == "graphormer" else None
         """
         Args:
             x (torch.Tensor): Node feature matrix [num_nodes, node_in_dim].
@@ -136,6 +151,8 @@ class FlexibleGNN(torch.nn.Module):
                 x = gnn_layer(x, edge_index, edge_attr=edge_attr, batch=batch)
             elif self.layer_type == "gin": # originally gin
                 x = gnn_layer(x, edge_index, edge_attr=edge_attr)
+            elif self.layer_type == "graphormer":
+                x, _ = gnn_layer(x, pe, attn_mask = data.attn_mask, edge_attr = edge_attr)
             else: # originally gcn
                 x = gnn_layer(x, edge_index)
 

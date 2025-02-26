@@ -135,7 +135,7 @@ if __name__ == "__main__":
         "--layer_type",
         type=str,
         default="gin",
-        help="The type of GNN layer to use (e.g., 'gcn', 'gin', 'gat', 'gps')"
+        help="The type of GNN layer to use (e.g., 'gcn', 'gin', 'gat', 'gps', 'graphormer)"
     )
     parser.add_argument(
         "--hidden_dim",

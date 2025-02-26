@@ -19,6 +19,8 @@ from torch_geometric.datasets import TUDataset, GNNBenchmarkDataset
 from torch_geometric.data import Data
 from torch_geometric.transforms import AddLaplacianEigenvectorPE, AddRandomWalkPE
 
+from models.graphormer import Graphormer
+
 tu_classes_lookup: dict = {"ENZYMES": 6,
                            "MUTAG": 2,
                            "PROTEINS": 2,
@@ -48,6 +50,7 @@ def add_pe_to_dataset(dataset, pe_dim, walk_length=20, attr_name='pe'):
         dataset[idata] = RWPE.forward(data)
 
     return dataset
+
 
 
 def infer_task_type(dataset):
@@ -232,6 +235,7 @@ def train_and_evaluate(dataset,
         pe_dim = int(0.2 * hidden_dim)
         noisy_train_dataset = add_pe_to_dataset(
             noisy_train_dataset, pe_original_dim, attr_name='pe')
+
     else:
         pe_dim = 0
 
@@ -246,63 +250,83 @@ def train_and_evaluate(dataset,
         noisy_test_dataset = add_pe_to_dataset(
             noisy_test_dataset, pe_original_dim, attr_name='pe')
 
+
     # Get dataset dimensions
     node_in_dim = dataset.num_node_features
     edge_in_dim = dataset.num_edge_features if hasattr(
         dataset, "num_edge_features") else 0
     num_classes = dataset[0].y.shape[-1] if task_type == "classification" or task_type == "multiclass-classification" else 1
 
-    gin_model_kwargs = {
-        "eps": 0,  # Initial epsilon value for the learnable scalar.
-        "train_eps": True,  # Allow epsilon to be learnable.
-    }
-    gcn_model_kwargs = {
-        "add_self_loops": True,  # Whether to add self-loops to the graph.
-        "normalize": True,       # Whether to apply symmetric normalization.
-    }
-    gat_model_kwargs = {
-        "heads": 4,             # Number of attention heads.
-        "concat": True,         # Whether to concatenate outputs of all heads.
-        "negative_slope": 0.2,  # LeakyReLU angle of the negative slope.
-        "dropout": 0.6,         # Dropout probability on attention weights.
-    }
-    gps_model_kwargs = {
-        "heads": 4,                  # Number of attention heads.
-        # Type of attention ("multihead" or "performer").
-        "attn_type": "multihead",
-        "attn_kwargs": {
-            "dropout": 0.5          # Dropout for attention.
-        },
-        "dropout": 0.2,              # Dropout in message-passing layers.
-        "act": "relu",               # Activation function for GPS layers.
-        "norm": "batch_norm",        # Normalization method for GPS layers.
-    }
 
-    kwarg_lookup = {"gin": gin_model_kwargs, "gcn": gcn_model_kwargs,
-                    "gat": gat_model_kwargs, "gps": gps_model_kwargs}
+    if layer_type != "graphormer":
+        gin_model_kwargs = {
+            "eps": 0,  # Initial epsilon value for the learnable scalar.
+            "train_eps": True,  # Allow epsilon to be learnable.
+        }
+        gcn_model_kwargs = {
+            "add_self_loops": True,  # Whether to add self-loops to the graph.
+            "normalize": True,       # Whether to apply symmetric normalization.
+        }
+        gat_model_kwargs = {
+            "heads": 4,             # Number of attention heads.
+            "concat": True,         # Whether to concatenate outputs of all heads.
+            "negative_slope": 0.2,  # LeakyReLU angle of the negative slope.
+            "dropout": 0.6,         # Dropout probability on attention weights.
+        }
+        gps_model_kwargs = {
+            "heads": 4,                  # Number of attention heads.
+            # Type of attention ("multihead" or "performer").
+            "attn_type": "multihead",
+            "attn_kwargs": {
+                "dropout": 0.5          # Dropout for attention.
+            },
+            "dropout": 0.2,              # Dropout in message-passing layers.
+            "act": "relu",               # Activation function for GPS layers.
+            "norm": "batch_norm",        # Normalization method for GPS layers.
+        }
 
-    # Initialize model
-    # model = FlexibleGNN(
-    #     layer_type=layer_type,
-    #     node_in_dim=node_in_dim,
-    #     edge_in_dim=edge_in_dim,
-    #     hidden_dim=hidden_dim,
-    #     num_layers=num_layers,
-    #     num_classes=num_classes,
-    #     task_type=task_level
-    # ).to(device)
 
-    model = FlexibleGNN(
-        layer_type=layer_type,
-        node_in_dim=node_in_dim,
-        edge_in_dim=edge_in_dim,
-        hidden_dim=hidden_dim,
-        num_classes=num_classes,
-        num_layers=num_layers,
-        task_type=task_level,
-        model_kwargs=kwarg_lookup[layer_type],
-        pe_dim=pe_dim
-    ).to(device)
+        kwarg_lookup = {"gin": gin_model_kwargs, "gcn": gcn_model_kwargs,
+                        "gat": gat_model_kwargs, "gps": gps_model_kwargs}
+
+        # Initialize model
+        # model = FlexibleGNN(
+        #     layer_type=layer_type,
+        #     node_in_dim=node_in_dim,
+        #     edge_in_dim=edge_in_dim,
+        #     hidden_dim=hidden_dim,
+        #     num_layers=num_layers,
+        #     num_classes=num_classes,
+        #     task_type=task_level
+        # ).to(device)
+
+        model = FlexibleGNN(
+            layer_type=layer_type,
+            node_in_dim=node_in_dim,
+            edge_in_dim=edge_in_dim,
+            hidden_dim=hidden_dim,
+            num_classes=num_classes,
+            num_layers=num_layers,
+            task_type=task_level,
+            model_kwargs=kwarg_lookup[layer_type],
+            pe_dim=pe_dim
+        ).to(device)
+
+    else:
+        num_heads = 8
+        # Ensure hidden_dim is divisible by num_heads
+        if hidden_dim % num_heads != 0:
+            new_hidden_dim = hidden_dim + (num_heads - hidden_dim % num_heads)
+            print(f"Adjusting hidden_dim from {hidden_dim} to {new_hidden_dim} to be divisible by num_heads")
+            hidden_dim = new_hidden_dim  # Adjust hidden_dim to nearest valid value
+
+        model = Graphormer(
+            in_channels = node_in_dim,
+            hidden_channels=hidden_dim,
+            out_channels=num_classes,
+            num_layers=num_layers,
+            num_heads = 8
+        ).to(device)
 
     wandb.watch(model)
 

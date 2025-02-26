@@ -20,7 +20,7 @@ datasets=(
 )
 
 # Define the list of GNN layers
-layers=("gat")
+layers=("graphormer")
 
 # Define the structure options
 structures=("False" "True")
