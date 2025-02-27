@@ -20,6 +20,7 @@ from torch_geometric.data import Data
 from torch_geometric.transforms import AddLaplacianEigenvectorPE, AddRandomWalkPE
 
 from models.graphormer import Graphormer
+from models.graphormer_dataset import create_dataloader_with_paths
 
 tu_classes_lookup: dict = {"ENZYMES": 6,
                            "MUTAG": 2,
@@ -229,26 +230,47 @@ def train_and_evaluate(dataset,
     pe_original_dim = 20
 
     # Create noisy copies of datasets
-    noisy_train_dataset = add_noise_to_dataset(
-        copy.deepcopy(dataset), t_structure, t_feature)
+    # noisy_train_dataset = add_noise_to_dataset(
+    #     copy.deepcopy(dataset), t_structure, t_feature)
     if pos_encodings:
         pe_dim = int(0.2 * hidden_dim)
         noisy_train_dataset = add_pe_to_dataset(
             noisy_train_dataset, pe_original_dim, attr_name='pe')
-
     else:
         pe_dim = 0
 
-    noisy_train_loader = DataLoader(
-        noisy_train_dataset, batch_size=batch_size, shuffle=True)
+    # noisy_train_loader = DataLoader(
+    #     noisy_train_dataset, batch_size=batch_size, shuffle=True)
 
+    noisy_train_dataset = add_noise_to_dataset(
+        copy.deepcopy(dataset), t_structure, t_feature)
+    
+    if layer_type == "graphormer":
+        noisy_train_loader = create_dataloader_with_paths(noisy_train_dataset, batch_size=batch_size)
+    else:
+        noisy_train_loader = DataLoader(
+            noisy_train_dataset, batch_size=batch_size, shuffle=False)
+
+        if pos_encodings:
+            noisy_train_dataset = add_pe_to_dataset(
+                noisy_train_dataset, pe_original_dim, attr_name='pe')
+
+    # noisy_test_dataset = add_noise_to_dataset(
+    #     copy.deepcopy(test_dataset), t_structure, t_feature)
+    # noisy_test_loader = DataLoader(
+    #     noisy_test_dataset, batch_size=batch_size, shuffle=False)
     noisy_test_dataset = add_noise_to_dataset(
         copy.deepcopy(test_dataset), t_structure, t_feature)
-    noisy_test_loader = DataLoader(
-        noisy_test_dataset, batch_size=batch_size, shuffle=False)
-    if pos_encodings:
-        noisy_test_dataset = add_pe_to_dataset(
-            noisy_test_dataset, pe_original_dim, attr_name='pe')
+    
+    if layer_type == "graphormer":
+        noisy_test_loader = create_dataloader_with_paths(noisy_test_dataset, batch_size=batch_size)
+    else:
+        noisy_test_loader = DataLoader(
+            noisy_test_dataset, batch_size=batch_size, shuffle=False)
+
+        if pos_encodings:
+            noisy_test_dataset = add_pe_to_dataset(
+                noisy_test_dataset, pe_original_dim, attr_name='pe')
 
 
     # Get dataset dimensions

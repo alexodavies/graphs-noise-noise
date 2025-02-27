@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.data import Data, Batch
-from torch_geometric.utils import to_undirected, remove_self_loops, add_self_loops
 
 
 class FeedForwardNetwork(nn.Module):
@@ -25,8 +24,7 @@ class FeedForwardNetwork(nn.Module):
 
 class GraphormerAttention(nn.Module):
     """
-    Graphormer attention mechanism with spatial bias and edge encoding.
-    Carefully designed to handle tensor dimensions correctly.
+    Graphormer attention mechanism optimized to use precomputed path distances.
     """
     def __init__(self, 
                 dim, 
@@ -63,10 +61,10 @@ class GraphormerAttention(nn.Module):
         # Virtual [CLS] token for graph-level representation
         self.graph_token = nn.Parameter(torch.zeros(1, 1, dim))
         
-    def forward(self, node_features, path_distances, edge_attr=None, attn_mask=None):
+    def forward(self, x, path_distances, edge_attr=None, attn_mask=None):
         """
         Args:
-            node_features: Node features [batch_size, num_nodes, dim]
+            x: Node features [batch_size, num_nodes, dim]
             path_distances: Shortest path distances [batch_size, num_nodes, num_nodes]
             edge_attr: Edge features or existence [batch_size, num_nodes, num_nodes] (optional)
             attn_mask: Attention mask [batch_size, num_nodes, num_nodes] (optional)
@@ -75,11 +73,11 @@ class GraphormerAttention(nn.Module):
             Node representations and graph representation
         """
         # Get batch size, number of nodes, and feature dimension
-        B, N, C = node_features.shape
+        B, N, C = x.shape
         
         # Add virtual [CLS] token
         graph_token = self.graph_token.expand(B, 1, C)
-        x = torch.cat([graph_token, node_features], dim=1)  # [B, N+1, C]
+        x = torch.cat([graph_token, x], dim=1)  # [B, N+1, C]
         
         # Create positional encoding with virtual node
         pe_with_cls = torch.zeros(B, N+1, N+1, dtype=torch.long, device=path_distances.device)
@@ -214,7 +212,8 @@ class GraphormerLayer(nn.Module):
 
 class Graphormer(nn.Module):
     """
-    Complete Graphormer model with internal preprocessing.
+    Graphormer model that uses precomputed shortest paths.
+    This is much faster than computing paths during the forward pass.
     """
     def __init__(self, 
                  in_channels, 
@@ -259,56 +258,23 @@ class Graphormer(nn.Module):
         # Final layer norm and projection
         self.norm = nn.LayerNorm(hidden_channels)
         self.out_proj = nn.Linear(hidden_channels, out_channels)
-
-    def compute_shortest_path_distance(self, edge_index, num_nodes):
-        """
-        Compute shortest path distances using Floyd-Warshall algorithm.
-        
-        Args:
-            edge_index: Graph connectivity [2, num_edges]
-            num_nodes: Number of nodes in the graph
-            
-        Returns:
-            dist: Shortest path distances [num_nodes, num_nodes]
-        """
-        device = edge_index.device
-        
-        # Handle empty graphs
-        if edge_index.numel() == 0:
-            return torch.zeros((num_nodes, num_nodes), device=device).long()
-        
-        # Make the graph undirected for distance calculation
-        edge_index = to_undirected(edge_index)
-        
-        # Initialize distance matrix
-        dist = torch.full((num_nodes, num_nodes), float('inf'), device=device)
-        dist[edge_index[0], edge_index[1]] = 1.0
-        dist.fill_diagonal_(0)
-        
-        # Floyd-Warshall algorithm
-        for k in range(num_nodes):
-            dist = torch.minimum(dist, dist[:, k:k+1] + dist[k:k+1, :])
-        
-        # Clip distances to max_path_distance
-        dist = torch.clamp(dist, 0, self.max_path_distance)
-        
-        return dist.long()
     
-    def prepare_batch_from_pyg(self, data):
+    def prepare_batch(self, data):
         """
-        Process a PyG Batch object into the format needed for Graphormer.
+        Convert PyG batch to dense tensors for Graphormer processing.
+        Uses precomputed shortest paths for efficiency.
         
         Args:
-            data: PyG Batch object
+            data: PyG Batch object with shortest_paths_list
             
         Returns:
-            node_features: Node features [batch_size, max_nodes, hidden_dim]
-            path_distances: Positional encodings [batch_size, max_nodes, max_nodes]
-            attn_mask: Attention mask [batch_size, max_nodes, max_nodes]
-            batch_indices: List of (start_idx, end_idx) for each graph in batch
+            node_features: [batch_size, max_nodes, hidden_dim]
+            path_distances: [batch_size, max_nodes, max_nodes]
+            attn_mask: [batch_size, max_nodes, max_nodes]
+            graph_indices: List of (batch_idx, num_nodes) tuples
         """
         device = data.x.device
-
+        
         # Get batch information
         if hasattr(data, 'batch') and data.batch.size(0) > 0:
             batch_idx = data.batch
@@ -324,73 +290,57 @@ class Graphormer(nn.Module):
             batch_size = 1
             num_graphs = 1
         
-        # Create tensors with the right shape
+        # Initialize dense tensors
         node_features = torch.zeros(batch_size, max_nodes, self.hidden_channels, device=device)
         path_distances = torch.zeros(batch_size, max_nodes, max_nodes, dtype=torch.long, device=device)
         attn_mask = torch.ones(batch_size, max_nodes, max_nodes, dtype=torch.bool, device=device)
         
+        # Track graph indices in the batch
+        graph_indices = []
+        
         # Process each graph
-        batch_indices = []
-        start_idx = 0
-        
+        ptr = 0
         for i in range(num_graphs):
-            # Get number of nodes for this graph
-            if i < len(graph_sizes):
-                size = graph_sizes[i]
-                if size > 0:
-                    # Process node features
-                    node_feats = self.node_encoder(data.x[start_idx:start_idx + size])
-                    node_features[i, :size] = node_feats
-                    
-                    # Get edges for this graph
-                    if hasattr(data, 'edge_index'):
-                        # Find edges for this graph
-                        edge_mask = torch.logical_and(
-                            data.edge_index[0] >= start_idx, 
-                            data.edge_index[0] < start_idx + size
-                        )
-                        edge_mask = torch.logical_and(
-                            edge_mask,
-                            torch.logical_and(
-                                data.edge_index[1] >= start_idx,
-                                data.edge_index[1] < start_idx + size
-                            )
-                        )
-                        
-                        if edge_mask.sum() > 0:
-                            edges = data.edge_index[:, edge_mask].clone()
-                            
-                            # Adjust edge indices to be 0-based for this graph
-                            edges[0] -= start_idx
-                            edges[1] -= start_idx
-                            
-                            # Compute shortest paths for this graph
-                            sp = self.compute_shortest_path_distance(edges, size)
-                            path_distances[i, :size, :size] = sp
-                        
-                    # Set attention mask (False = attend, True = mask out)
-                    attn_mask[i, :size, :size] = False
-                    
-                    # Track indices for this graph
-                    batch_indices.append((start_idx, start_idx + size))
-                    start_idx += size
+            if i >= len(graph_sizes):
+                continue
+                
+            size = graph_sizes[i]
+            if size > 0:
+                # Encode node features
+                node_feats = self.node_encoder(data.x[ptr:ptr+size])
+                node_features[i, :size] = node_feats
+                
+                # Use precomputed shortest paths if available
+                if hasattr(data, 'shortest_paths_list') and i < len(data.shortest_paths_list):
+                    paths = data.shortest_paths_list[i]
+                    if paths is not None:
+                        path_distances[i, :size, :size] = paths
+                
+                # Set attention mask (False = attend, True = mask out)
+                attn_mask[i, :size, :size] = False
+                
+                # Store graph indices
+                graph_indices.append((i, size))
+                
+                # Update pointer
+                ptr += size
         
-        return node_features, path_distances, attn_mask, batch_indices
-        
+        return node_features, path_distances, attn_mask, graph_indices
+    
     def forward(self, data):
         """
-        Forward pass with internal preprocessing for PyG data.
+        Forward pass with precomputed shortest paths.
         
         Args:
-            data: PyG Data or Batch object
+            data: PyG Batch object with shortest_paths_list attribute
             
         Returns:
             out: Model output
         """
-        # Preprocess the PyG data
-        node_features, path_distances, attn_mask, batch_indices = self.prepare_batch_from_pyg(data)
+        # Convert batch to dense format
+        node_features, path_distances, attn_mask, graph_indices = self.prepare_batch(data)
         
-        # Apply Graphormer layers
+        # Process through Graphormer layers
         last_graph_output = None
         
         for layer in self.layers:
@@ -401,27 +351,24 @@ class Graphormer(nn.Module):
             )
             last_graph_output = graph_output
         
-        # Apply final normalization to node features
+        # Apply final normalization
         node_features = self.norm(node_features)
         
-        # For graph-level tasks, use appropriate pooling
+        # Pool node features for graph representation
         if self.pooling == 'cls':
-            # Use the graph token from the last layer
+            # Use the graph token
             pooled = last_graph_output
         else:  # 'mean' pooling
-            # Mean pooling of node features for each graph
-            batch_size = len(batch_indices)
+            # Average valid node representations for each graph
             pooled = []
+            for batch_idx, size in graph_indices:
+                if size > 0:
+                    graph_nodes = node_features[batch_idx, :size]
+                    pooled.append(graph_nodes.mean(dim=0))
             
-            for i in range(batch_size):
-                if i < len(batch_indices):
-                    size = batch_indices[i][1] - batch_indices[i][0]
-                    if size > 0:
-                        # Average the non-padded node features
-                        graph_nodes = node_features[i, :size]
-                        pooled.append(graph_nodes.mean(dim=0))
-            
-            pooled = torch.stack(pooled) if pooled else torch.zeros(batch_size, self.hidden_channels, device=node_features.device)
+            pooled = torch.stack(pooled) if pooled else torch.zeros(
+                len(graph_indices), self.hidden_channels, device=node_features.device
+            )
         
         # Final projection
         out = self.out_proj(pooled)
