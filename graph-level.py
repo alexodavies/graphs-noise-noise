@@ -26,7 +26,7 @@ def evaluate_dataset(args):
     # elif "TU" in dataset:
     #     project = "noise-TUDatasets"
 
-    project = "noise-v2-testing"
+    project = "noise-v2-fixed-test-set"
 
     use_linear = False  # TODO: fix code - currently being set to true by bash script
     pos_included_string = "-pos" if args.structure else ""
@@ -202,6 +202,13 @@ if __name__ == "__main__":
         type=bool,
         default=False,
         help="Whether to avoid using the GPU"
+    )
+
+    parser.add_argument(
+        '--fixed-test',
+        type=bool,
+        default=False,
+        help="Whether to fix the test set (ie avoid playing noise)"
     )
 
     args = parser.parse_args()

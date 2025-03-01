@@ -20,7 +20,7 @@ datasets=(
 )
 
 # Define the list of GNN layers
-layers=("gat")
+layers=("gcn" "gin" "gat")
 
 # Define the structure options
 structures=("False" "True")
@@ -56,7 +56,8 @@ for layer in "${layers[@]}"; do
             --n_repeats "$n_repeats" \
             --layer "$layer" \
             --epochs "$epochs"\
-            --batch_size "$batch_size"
+            --batch_size "$batch_size"\
+            --fixed-test "True"
         # done
     done
 done
@@ -73,7 +74,8 @@ for layer in "${layers[@]}"; do
             --layer "$layer" \
             --epochs "$epochs"\
             --batch_size "$batch_size" \
-            --structure True
+            --structure True\
+            --fixed-test "True"
         # done
     done
 done

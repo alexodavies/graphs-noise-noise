@@ -194,6 +194,7 @@ def evaluate(model, loader, device, task_type):
 
 
 def train_and_evaluate(dataset,
+                       fixed_test,
                        test_dataset,
                        layer_type,
                        hidden_dim,
@@ -259,8 +260,13 @@ def train_and_evaluate(dataset,
     #     copy.deepcopy(test_dataset), t_structure, t_feature)
     # noisy_test_loader = DataLoader(
     #     noisy_test_dataset, batch_size=batch_size, shuffle=False)
-    noisy_test_dataset = add_noise_to_dataset(
-        copy.deepcopy(test_dataset), t_structure, t_feature)
+
+    if not fixed_test:
+        print("Applying noise to test set")
+        noisy_test_dataset = add_noise_to_dataset(
+            copy.deepcopy(test_dataset), t_structure, t_feature)
+    else:
+        noisy_test_dataset = copy.deepcopy(test_dataset)
     
     if layer_type == "graphormer":
         noisy_test_loader = create_dataloader_with_paths(noisy_test_dataset, batch_size=batch_size)
@@ -590,6 +596,7 @@ def evaluate_main(args,
     pos_encodings = args.structure
     pos_dim = args.pos_dim
     avoid_cuda = args.no_cuda
+    fixed_test = args.fixed_test
 
     # Load dataset
     if dataset.startswith("ogbn"):
@@ -648,6 +655,7 @@ def evaluate_main(args,
     if not linear:
         score, task_type = train_and_evaluate(
             dataset=train_dataset,
+            fixed_test=fixed_test,
             test_dataset=test_dataset if not eval_on_val else val_dataset,
             layer_type=layer_type,
             hidden_dim=hidden_dim,
