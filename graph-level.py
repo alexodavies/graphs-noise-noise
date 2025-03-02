@@ -8,6 +8,7 @@ from supervised_functions import evaluate_main
 import wandb
 from utils import save_run
 from metrics import plot_results
+from fixed_train_set import evaluate_main_fixed_train
 # Torch geometric produces future warnings with current version of OGB
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -26,7 +27,7 @@ def evaluate_dataset(args):
     # elif "TU" in dataset:
     #     project = "noise-TUDatasets"
 
-    project = "noise-v2-fixed-test-set"
+    project = "noise-v2-fixed-train-set"
 
     use_linear = False  # TODO: fix code - currently being set to true by bash script
     pos_included_string = "-pos" if args.structure else ""
@@ -42,19 +43,7 @@ def evaluate_dataset(args):
     feature_performances = dict()
     ts = np.linspace(0, 1, n_noise_levels)
 
-# dataset: str = "ogbg-molclintox",
-#                   layer_type: str = "gin",
-#                   hidden_dim: int = 100,
-#                   num_layers: int = 3,
-#                   batch_size: int = 512,
-#                   epochs: int = 25,
-#                   lr: float = 0.001,
-#                   t_structure: float = 0.,
-#                   t_feature: float = 0.,
-#                   linear: bool = False,
-#                   pos_encodings: bool = False,
-#                   pos_dim: int = 20,
-#                   avoid_cuda: bool = True
+    eval_fn = evaluate_main if not args.fixed_train else evaluate_main_fixed_train
 
     for ti in tqdm(range(n_noise_levels), desc=f"Running {dataset}"):
         ti_performances_structure = []
@@ -67,7 +56,7 @@ def evaluate_dataset(args):
             if ti == 0:
                 # struc, tt = evaluate_main(dataset=dataset, t_structure=ts[ti],
                 #                 linear=use_linear, layer_type=args.layer, pos_encodings=args.structure)
-                struc, tt = evaluate_main(args)
+                struc, tt = eval_fn(args)
                 ti_performances_structure.append(struc)
                 ti_performances_feature.append(struc)
 
@@ -76,14 +65,14 @@ def evaluate_dataset(args):
 
                 continue
             else:
-                struc, tt = evaluate_main(args, t_structure = ts[ti])
+                struc, tt = eval_fn(args, t_structure = ts[ti])
                 ti_performances_structure.append(struc)
 
 
 
                 # feat, tt = evaluate_main(dataset=dataset, t_feature=ts[ti],
                 #                          linear=use_linear, layer_type=args.layer, pos_encodings=args.structure)
-                feat, tt = evaluate_main(args, t_feature = ts[ti])
+                feat, tt = eval_fn(args, t_feature = ts[ti])
                 ti_performances_feature.append(feat)
 
                 pbar_string = f"Struc: {struc}, feat: {feat}"
@@ -206,6 +195,13 @@ if __name__ == "__main__":
 
     parser.add_argument(
         '--fixed-test',
+        type=bool,
+        default=False,
+        help="Whether to fix the test set (ie avoid playing noise)"
+    )
+
+    parser.add_argument(
+        '--fixed-train',
         type=bool,
         default=False,
         help="Whether to fix the test set (ie avoid playing noise)"
