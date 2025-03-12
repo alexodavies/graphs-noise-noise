@@ -132,22 +132,22 @@ def nnd(result_dict, extremis=False):
     global_min = min(np.min(feat_means), np.min(struc_means))
     global_max = max(np.max(feat_means), np.max(struc_means))
 
-    if "classification" in task:
-        global_min = min(np.min(feat_means), np.min(struc_means))
-        feat_means -= global_min
-        struc_means -= global_min
-        global_max = max(np.max(feat_means), np.max(struc_means))
-        feat_means /= global_max
-        struc_means /= global_max
+    # if "classification" in task:
+    global_min = min(np.min(feat_means), np.min(struc_means))
+    feat_means -= global_min
+    struc_means -= global_min
+    global_max = max(np.max(feat_means), np.max(struc_means))
+    feat_means /= global_max
+    struc_means /= global_max
 
 
-    else:
-        global_max = min(np.max(feat_means), np.max(struc_means))
-        feat_means -= global_max
-        struc_means -= global_max
-        global_min = min(np.min(feat_means), np.min(struc_means))
-        feat_means /= global_min
-        struc_means /= global_min
+    # else:
+    #     global_max = min(np.max(feat_means), np.max(struc_means))
+    #     feat_means -= global_max
+    #     struc_means -= global_max
+    #     global_min = min(np.min(feat_means), np.min(struc_means))
+    #     feat_means /= global_min
+    #     struc_means /= global_min
 
     feat_means += 1
     struc_means += 1
@@ -164,6 +164,7 @@ def nnd(result_dict, extremis=False):
     if "classification" in task:
         log_difference = np.log(np.array(feat_means) / np.array(struc_means))
     else:
+        print(np.array(struc_means) / np.array(feat_means))
         log_difference = np.log(np.array(struc_means) / np.array(feat_means))
 
     return np.mean(log_difference)

@@ -56,7 +56,8 @@ for layer in "${layers[@]}"; do
             --n_repeats "$n_repeats" \
             --layer "$layer" \
             --epochs "$epochs"\
-            --batch_size "$batch_size"
+            --batch_size "$batch_size"\
+            --fixed-train "True"
         # done
     done
 done

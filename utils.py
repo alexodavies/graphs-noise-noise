@@ -15,8 +15,82 @@ from torch_geometric.utils import remove_self_loops
 from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims
 from metrics import nnd
 
+from typing import Any, Optional
+
+from torch_geometric.data import Data
+from torch_geometric.data.datapipes import functional_transform
+from torch_geometric.transforms import BaseTransform
+
+
 full_atom_feature_dims = get_atom_feature_dims()
 full_bond_feature_dims = get_bond_feature_dims()
+
+def add_node_attr(
+    data: Data,
+    value: Any,
+    attr_name: Optional[str] = None,
+) -> Data:
+    if attr_name is None:
+        if data.x is not None:
+            x = data.x.view(-1, 1) if data.x.dim() == 1 else data.x
+            data.x = torch.cat([x, value.to(x.device, x.dtype)], dim=-1)
+        else:
+            data.x = value
+    else:
+        data[attr_name] = value
+
+    return data
+
+
+@functional_transform('add_random_noise_pe')
+class AddRandomNoisePE(BaseTransform):
+    r"""Adds random continuous noise as a form of positional encoding to the given graph
+    (functional name: :obj:`add_random_noise_pe`).
+
+    Args:
+        dim (int): The number of random noise dimensions to generate.
+        mean (float): The mean of the normal distribution. (default: 0.0)
+        std (float): The standard deviation of the normal distribution. (default: 1.0)
+        attr_name (str, optional): The attribute name of the data object to add
+            positional encodings to. If set to :obj:`None`, will be
+            concatenated to :obj:`data.x`. (default: :obj:`"random_noise_pe"`)
+        seed (int, optional): Random seed for reproducibility. If None, uses PyTorch's
+            default random state. (default: :obj:`None`)
+    """
+    def __init__(
+        self,
+        dim: int,
+        mean: float = 0.0,
+        std: float = 1.0,
+        attr_name: Optional[str] = 'random_noise_pe',
+        seed: Optional[int] = None,
+    ) -> None:
+        self.dim = dim
+        self.mean = mean
+        self.std = std
+        self.attr_name = attr_name
+        self.seed = seed
+
+    def forward(self, data: Data) -> Data:
+        num_nodes = data.num_nodes
+        assert num_nodes is not None
+
+        # Set random seed for reproducibility if provided
+        if self.seed is not None:
+            torch.manual_seed(self.seed)
+            
+        # Generate random noise from a normal distribution
+        noise = torch.zeros(num_nodes, self.dim)
+        
+        # If data is on GPU, move noise to the same device
+        if hasattr(data, 'x') and data.x is not None:
+            noise = noise.to(data.x.device)
+        
+        # Add noise as node attribute
+        data = add_node_attr(data, noise, attr_name=self.attr_name)
+
+        return data
+
 
 # Function to save experiment results
 def save_run(performance_dict):

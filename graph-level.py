@@ -9,6 +9,7 @@ import wandb
 from utils import save_run
 from metrics import plot_results
 from fixed_train_set import evaluate_main_fixed_train
+from fixed_train_added_noise import evaluate_main_fixed_train_noise_pes
 # Torch geometric produces future warnings with current version of OGB
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -27,7 +28,7 @@ def evaluate_dataset(args):
     # elif "TU" in dataset:
     #     project = "noise-TUDatasets"
 
-    project = "noise-v2-fixed-train-set"
+    project = "noise-graphormer-fixed"
 
     use_linear = False  # TODO: fix code - currently being set to true by bash script
     pos_included_string = "-pos" if args.structure else ""
@@ -43,7 +44,15 @@ def evaluate_dataset(args):
     feature_performances = dict()
     ts = np.linspace(0, 1, n_noise_levels)
 
-    eval_fn = evaluate_main if not args.fixed_train else evaluate_main_fixed_train
+    if args.fixed_train:
+        if args.random_noise_pe:
+            eval_fn = evaluate_main_fixed_train_noise_pes
+        else:
+            eval_fn = evaluate_main_fixed_train
+    else:
+        eval_fn = evaluate_main
+
+    # eval_fn = evaluate_main if not args.fixed_train else evaluate_main_fixed_train
 
     for ti in tqdm(range(n_noise_levels), desc=f"Running {dataset}"):
         ti_performances_structure = []
@@ -205,6 +214,13 @@ if __name__ == "__main__":
         type=bool,
         default=False,
         help="Whether to fix the test set (ie avoid playing noise)"
+    )
+
+    parser.add_argument(
+        '--random-noise-pe',
+        type=bool,
+        default=False,
+        help="Whether to use random noise as extra node features (ie avoid playing noise)"
     )
 
     args = parser.parse_args()

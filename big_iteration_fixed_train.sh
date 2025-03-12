@@ -46,21 +46,21 @@ shift "$((OPTIND - 1))"
 
 
 # Iterate over each dataset, layer, and structure flag
-for layer in "${layers[@]}"; do
-    for dataset in "${datasets[@]}"; do
-        # for structure in "${structures[@]}"; do
-        echo "Evaluating dataset: $dataset with layer: $layer"
-        python graph-level.py \
-            --dataset "$dataset" \
-            --n_noise_levels "$n_noise_levels" \
-            --n_repeats "$n_repeats" \
-            --layer "$layer" \
-            --epochs "$epochs"\
-            --batch_size "$batch_size"\
-            --fixed-train "True"
-        # done
-    done
-done
+# for layer in "${layers[@]}"; do
+#     for dataset in "${datasets[@]}"; do
+#         # for structure in "${structures[@]}"; do
+#         echo "Evaluating dataset: $dataset with layer: $layer"
+#         python graph-level.py \
+#             --dataset "$dataset" \
+#             --n_noise_levels "$n_noise_levels" \
+#             --n_repeats "$n_repeats" \
+#             --layer "$layer" \
+#             --epochs "$epochs"\
+#             --batch_size "$batch_size"\
+#             --fixed-train "True"
+#         # done
+#     done
+# done
 
 # Iterate over each dataset, layer, and structure flag
 for layer in "${layers[@]}"; do
@@ -75,7 +75,7 @@ for layer in "${layers[@]}"; do
             --epochs "$epochs"\
             --batch_size "$batch_size" \
             --structure True\
-            --fixed-t "True"
+            --fixed-train "True"
         # done
     done
 done
