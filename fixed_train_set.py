@@ -637,9 +637,13 @@ def evaluate_model_with_noise(model,
         
         # Create loader from the list
         if layer_type == "graphormer":
-            noisy_test_loader = create_dataloader_with_paths(noisy_test_data_list, batch_size=batch_size)
+            print("Creating graphormer loader")
+            # train_loader = create_dataloader_with_paths(train_data_list, batch_size=batch_size)
+            for data in noisy_test_data_list:
+                data.x = torch.hstack((data.x, data.pe))
+            train_loader = DataLoader(noisy_test_data_list, batch_size=batch_size, shuffle=True)
         else:
-            noisy_test_loader = DataLoader(noisy_test_data_list, batch_size=batch_size, shuffle=False)
+            train_loader = DataLoader(noisy_test_data_list, batch_size=batch_size, shuffle=True)
     else:
         # Use original noisy dataset without positional encodings
         if layer_type == "graphormer":
