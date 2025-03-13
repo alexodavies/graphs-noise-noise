@@ -291,6 +291,10 @@ def train_and_save_model(dataset,
 
     # Get dataset dimensions
     node_in_dim = dataset.num_node_features
+
+    if layer_type == "graphormer" and pos_encodings:
+        node_in_dim += pe_dim
+
     edge_in_dim = dataset.num_edge_features if hasattr(
         dataset, "num_edge_features") else 0
     num_classes = dataset[0].y.shape[-1] if task_type == "classification" or task_type == "multiclass-classification" else 1
