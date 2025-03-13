@@ -42,6 +42,7 @@ def collate_with_paths(data_list, max_distance=5):
     """
     # First, use standard PyG batching
     batch = Batch.from_data_list(data_list)
+    print("In collate")
     
     # Compute shortest paths for each graph
     paths_list = []
@@ -75,7 +76,8 @@ def collate_with_paths(data_list, max_distance=5):
         paths_list.append(paths)
     
     # Add paths list to batch
-    batch.shortest_paths_list = paths_list
+    # batch.shortest_paths_list = paths_list
+    setattr(batch, 'shortest_paths_list', paths_list)
     
     return batch
 
@@ -85,15 +87,22 @@ def create_dataloader_with_paths(dataset, batch_size=32, shuffle=True, max_dista
     from torch_geometric.loader import DataLoader
     
     # Create custom collate function with the specified max_distance
-    collate_fn = lambda data_list: collate_with_paths(data_list, max_distance=max_distance)
+    # collate_fn = lambda data_list: collate_with_paths(data_list, max_distance=max_distance)
+
+     # Create custom collate function with the specified max_distance
+    def custom_collate(data_list):
+        print("Custom collate function is being called!")  # Debug print
+        return collate_with_paths(data_list, max_distance=max_distance)
+
     
     # Create dataloader
     loader = DataLoader(
         dataset, 
         batch_size=batch_size,
         shuffle=shuffle,
-        collate_fn=collate_fn,
+        collate_fn=custom_collate,
         **kwargs
     )
-    
+
+
     return loader

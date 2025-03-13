@@ -273,6 +273,7 @@ def train_and_save_model(dataset,
         
         # Create loader from the list
         if layer_type == "graphormer":
+            print("Creating graphormer loader")
             train_loader = create_dataloader_with_paths(train_data_list, batch_size=batch_size)
         else:
             train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
@@ -280,6 +281,7 @@ def train_and_save_model(dataset,
         pe_dim = 0
         # Use original dataset
         if layer_type == "graphormer":
+            print("Creating graphormer loader")
             train_loader = create_dataloader_with_paths(train_dataset, batch_size=batch_size)
         else:
             train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)

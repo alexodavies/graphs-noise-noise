@@ -57,7 +57,8 @@ for layer in "${layers[@]}"; do
             --layer "$layer" \
             --epochs "$epochs"\
             --batch_size "$batch_size"\
-            --fixed-train "True"
+            --fixed-train "True"\
+            --structure 'True'
         # done
     done
 done
