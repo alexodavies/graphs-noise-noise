@@ -274,7 +274,10 @@ def train_and_save_model(dataset,
         # Create loader from the list
         if layer_type == "graphormer":
             print("Creating graphormer loader")
-            train_loader = create_dataloader_with_paths(train_data_list, batch_size=batch_size)
+            # train_loader = create_dataloader_with_paths(train_data_list, batch_size=batch_size)
+            for data in train_data_list:
+                data.x = torch.hstack((data.x, data.pe))
+            train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
         else:
             train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
     else:
