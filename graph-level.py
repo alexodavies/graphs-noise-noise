@@ -10,6 +10,7 @@ from utils import save_run
 from metrics import plot_results
 from fixed_train_set import evaluate_main_fixed_train
 from fixed_train_added_noise import evaluate_main_fixed_train_noise_pes
+from fixed_train_top import evaluate_main_top
 # Torch geometric produces future warnings with current version of OGB
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -28,13 +29,16 @@ def evaluate_dataset(args):
     # elif "TU" in dataset:
     #     project = "noise-TUDatasets"
 
-    project = "noise-graphormer-fixed"
+    project = "noise-ToP"
 
     use_linear = False  # TODO: fix code - currently being set to true by bash script
     pos_included_string = "-pos" if args.structure else ""
+    run_name = args.layer_type + '-' + dataset + pos_included_string + "-ER-swapping"
+    if args.top_model is not None:
+        run_name = f"ToP-{args.top_model}-{dataset}" + pos_included_string
     wandb.init(project= project, # "noise-synthetics-benchmarks",  # + "-linear" if use_linear else "",
                entity="hierarchical-diffusion",
-               name=args.layer_type + '-' + dataset + pos_included_string + "-ER-swapping",
+               name=run_name,
                config=args)
     
     wandb.log({"Noise type":"ER-Swapping"})
@@ -47,6 +51,8 @@ def evaluate_dataset(args):
     if args.fixed_train:
         if args.random_noise_pe:
             eval_fn = evaluate_main_fixed_train_noise_pes
+        elif args.top_model is not None:
+            eval_fn = evaluate_main_top
         else:
             eval_fn = evaluate_main_fixed_train
     else:
@@ -221,6 +227,13 @@ if __name__ == "__main__":
         type=bool,
         default=False,
         help="Whether to use random noise as extra node features (ie avoid playing noise)"
+    )
+
+    parser.add_argument(
+        '--top-model',
+        type=str,
+        default=None,
+        help="Name of ToP model to load"
     )
 
     args = parser.parse_args()
