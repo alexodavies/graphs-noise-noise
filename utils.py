@@ -102,6 +102,7 @@ def save_run(performance_dict):
     wandb.log({"NND":nnd(performance_dict)})
     linear = '-linear' if performance_dict['linear'] else ""
     pos = '-pos' if performance_dict['structure'] else ""
+
     
     json_path = f"results/{layer}/{performance_dict['dataset']}{linear}{pos}.json"
     with open(json_path, "w") as f:
