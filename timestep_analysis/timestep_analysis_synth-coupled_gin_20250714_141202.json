@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "dataset": "synth-coupled",
+    "layer_type": "gin",
+    "structure": false,
+    "n_bootstrap": 5,
+    "timestep_sizes_tested": [
+      5,
+      7,
+      10,
+      15,
+      20,
+      25
+    ],
+    "analysis_date": "2025-07-14T14:12:02.790098"
+  },
+  "results": {}
+}

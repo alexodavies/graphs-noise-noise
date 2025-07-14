@@ -1,179 +1,212 @@
-# ToP
+# Noise-Noise Analysis for Graph Neural Networks
 
-Repository for the paper **Towards Generalised Pre-Training of Graph Models**, presenting the **T**opology **O**nly **P**re-training (**ToP**).
+This repository implements **noise-noise analysis**, a method for evaluating how Graph Neural Networks (GNNs) balance information from graph structure versus node/edge features. The implementation is based on the research paper "A Method and a Metric for GNN Reliance on Information from Features and Structure".
 
-### Abstract:
+## Overview
 
-The principal benefit of unsupervised representation learning is that a pre-trained model can be fine-tuned where data or labels are scarce.
-Existing approaches for graph representation learning are domain specific, maintaining consistent node and edge attributes across the pre-training and target datasets.
-This has precluded transfer to multiple domains.
-<!-- A model capable of positive transfer on arbitrary tasks and domains would represent the first foundation graph model. -->
+Noise-noise analysis helps answer a fundamental question in graph learning: *Does my model rely more on graph structure or node features?* By systematically adding noise to either structure or features independently, we can measure this balance using the **Noise-Noise Ratio Difference (NNRD)** metric.
 
-In this work we present **T**opology **O**nly **P**re-Training (**ToP**), a graph pre-training method based on node and edge feature exclusion.
-We use **ToP** with graph contrastive learning to pre-train models over multiple graph domains.
-We demonstrate positive transfer on evaluation datasets from multiple domains, including domains not present in pre-training data.
-On 75% of experiments, **ToP** performs significantly better than a supervised baseline, with an 8 to 40% reduction in error at 95% confidence. 
-The remaining cases show equal performance to the baseline. 
-Contrary to other research, pre-training with **ToP** on a dataset with the target domain excluded leads us to better performance than pre-training on a dataset from only the target domain.
-The multi-domain model at worst, matches, and on 75% of tasks, significantly outperforms single-domain (p <= 0.01).
+### Key Concepts
 
-### Reproducing our Results
+- **Graph-less learning**: Model ignores graph structure, relies only on features
+- **Feature-less learning**: Model ignores node/edge features, relies only on structure  
+- **NNRD**: Bounded metric comparing performance degradation under feature vs. structure noise
+  - Negative NNRD → Feature-biased model
+  - Positive NNRD → Structure-biased model
+  - NNRD ≈ 0 → Balanced reliance
 
-Experimental details can be found in the ToP paper.
-Default parameters in-code match those used in our experiments, and key-word arguments (see below) can be used to change experimental setup if necessary.
+## Installation
 
-Training the ToP-All model requires this command:
-
-``
-python train.py --epochs 100
-``
-
-Having pre-trained a model, the resulting checkpoints and config files can be found under `wandb/`.
-To perform transfer, first move `checkpoint.pt` and `config.yaml` to `outputs/`, and rename `config.yaml` to `checkpoint.yaml`.
-
-The transfer command is then (see below for further arguments):
-
-``
-python transfer.py --checkpoint checkpoint.pt
-``
-
-The same for transfer on molecular benchmarks with features:
-
-``
-python features_transfer.py --checkpoint checkpoint.pt -f
-``
-
-and the same syntax for node classification and edge classification.
-
-## Code Usage
-
-The environmental setup is fairly minimal.
-The broad requirements are standard for graph deep-learning:
-
- - Python=3.11
- - pytorch-geometric
- - pytorch (shocking I know)
- - numpy, scipy, matplotlib, pandas, etc.
- - ogb (open graph benchmark)
-
-
-#### Environment
-
-We include an environment for our working computer:
-
-- Linux
-- Ubuntu 22.02
-- Nvidia driver version 555.42.06
-- Cuda version 12.5
-
-Follow these steps to create a Conda env with the required packages:
-
-```
-conda create -n pyg-top python=3.11
->>> ...are you sure you want to ... [y/n]
-conda activate pyg-top
-pip install -r requirements.txt
+```bash
+# Clone repository and install dependencies
+pip install torch torch-geometric
+pip install numpy tqdm wandb pyyaml matplotlib
+pip install ogb  # For molecular datasets
 ```
 
-### Training
-`train.py --args` can be used to train new FoToM models.
+## Quick Start
 
-Most arguments have descriptions accessible via `--help`.
-Arguments specific to FoToM are as follows:
+### Basic Usage
 
- - `-f --node-features`       whether to use node labels during evaluation
- - `-c --no-molecules`        whether to exclude molecules from training data
- - `-s --no-socials`          whether to exclude non-molecules from training data
- - `-rn --randon-node-views`  whether to switch from adversarial augmentations to random node dropping
- - `-re --randon-edge-views`  whether to switch from adversarial augmentations to random edge dropping
- - `--dropped`                if using random edge/node dropping, what proportion to drop
- - `--backbone`               which GNN backbone to use (default GIN, optionally GCN, GAT)
- - `--exclude`                option to exclude individual non-molecular datasets, primarily for ablation studies ("facebook_large", "twitch_egos", "cora", "roads", "fruit_fly")
-
-## Models
-
-Models can be downloaded through https://drive.google.com/file/d/1Ionm2UsVLNpPmQdOiBBzGq_YjELllGeC/view?usp=sharing.
-This zip archive should be placed in the root directory, then unpacked with `unzip_models.sh`.
-
-We include several pre-trained models:
-
-| Checkpoint name | Backbone | Contrastive Method | Pre-Train Data |
-|-|-|-|-|
-| untrained | Specified with ``--backbone`` | None | None |
-|-|-|-|-|
-| all-100.pt | GIN | AD-GCL | All |
-| social-100.pt | GIN | AD-GCL | Non-Molecules |
-| chem-100.pt | GIN | AD-GCL | Molecules |
-|-|-|-|-|
-| gat-all.pt | GAT | AD-GCL | All |
-| gat-social.pt | GAT | AD-GCL | Non-Molecules |
-| gat-chem.pt | GAT | AD-GCL | Molecules |
-|-|-|-|-|
-| gcn-all.pt | GCN | AD-GCL | All |
-| gcn-social.pt | GCN | AD-GCL | Non-Molecules |
-| gcn-chem.pt | GCN | AD-GCL | Molecules |
-|-|-|-|-|
-| edge-views-all.pt | GIN | GraphCL (edges) | All |
-| edge-views-social.pt | GIN | GraphCL (edges) | Non-Molecules |
-| edge-views-chem.pt | GIN | GraphCL (edges) | Molecules |
-|-|-|-|-|
-| node-views-all.pt | GIN | GraphCL (nodes) | All |
-| node-views-social.pt | GIN | GraphCL (nodes) | Non-Molecules |
-| node-views-chem.pt | GIN | GraphCL (nodes) | Molecules |
-|-|-|-|-|
-| random.pt | GIN | AD-GCL| Random Graphs|
-|-|-|-|-|
-| Available on request | GIN | AD-GCL | Non-Molecules, with component dataset excluded|
-
-
-### Transfer
-
-`transfer.py --args` can be used to fine-tune FoToM models, optinally with node labels.
-Please note that it does this on all of our validation datasets.
-Pre-trained models can be downloaded with `download_models.sh`.
-
- - `-f --node-features`       whether to use node labels during evaluation
- - `--num` the maximum number of samples to include in the test sets (doubled for validation)
- - `--checkpoint` the model checkpoint to fine-tune. See above for included models.
-
-#### Linear Transfer
-
-`linear_transfer.py` functions in essentially the same way, except that it uses a linear model in place of fine-tuning a FoToM model.
-
-## Transfer with Features
-
-`features_transfer.py --args` can be used to fine-tune FoToM models, optionally with complete node and edge features.
-Currently this is limited to our chemical benchmark dataserts.
-Pre-trained models can be downloaded with `download_models.sh`, see above.
-
- - `-f --node-features`       whether to use node (and edge) features during evaluation
- - `--num` the maximum number of samples to include in the test sets (doubled for validation)
- - `--checkpoint` the model checkpoint to fine-tune. See above for included models.
- - `--backbone` Model backbone to use (gin, gcn, gat)
-
- ### Node and Edge Transfer
-
-`node_classification_transfer.py` and `edge_prediction_transfer.py` perform transfer runs for node classification and edge prediction.
-Arguments are the same as for transfer with features.
-
-#### Noise/Noise Analysis
-
-Our code for testing the information in features vs structure can be found in `general-gcl/noisenoise`.
-
-The code is executed in `features-vs-structure-lines.py`, with model names hard-coded, so simply run:
-
-```
-    python features-vs-structure-lines.py
+```bash
+python graph-level.py --dataset ogbg-molhiv --layer_type gin --n_noise_levels 10 --n_repeats 5
 ```
 
-The resulting figures are then placed under `outputs/noise-noise/.`
+### With Configuration File
 
-#### Further code
+```bash
+python graph-level.py --config my_config.yaml --dataset ogbg-molclintox
+```
 
-Dataset code can be found under `/datasets/`.
-Loaders can be found here under `loaders.py`, and other datasets have their own respective processing files.
-`from_ogb_dataset.py` converts an OGB dataset into a standard pytorch-geometric dataset.
+## Command Line Arguments
 
+### Dataset and Model
+- `--dataset`: Dataset name (e.g., 'ogbg-molhiv', 'TU-Enzymes')
+- `--layer_type`: GNN layer ('gcn', 'gin', 'gat', 'gps', 'graphormer')
+- `--hidden_dim`: Hidden dimension size (default: 100)
+- `--num_layers`: Number of GNN layers (default: 3)
 
+### Training Parameters
+- `--epochs`: Training epochs (default: 25)
+- `--lr`: Learning rate (default: 0.001)
+- `--batch_size`: Batch size (default: 256)
 
+### Noise Analysis Settings
+- `--n_noise_levels`: Number of noise levels to test (default: 10)
+- `--n_repeats`: Repetitions per noise level (default: 5)
+- `--fixed-train`: Fix training set, only noise test set
+- `--fixed-test`: Fix test set, only noise training set
 
+### Structural Information
+- `--structure`: Include positional encodings
+- `--pos_dim`: Positional encoding dimension (default: 16)
+
+### Specialized Modes
+- `--top-model`: Use pre-trained ToP model
+- `--random-noise-pe`: Add random noise as extra features
+- `--use_linear`: Use linear models instead of neural networks
+
+## Configuration Files
+
+Create YAML configuration files in the `configs/` directory:
+
+```yaml
+# configs/molecular_analysis.yaml
+dataset: "ogbg-molhiv"
+layer_type: "gin"
+hidden_dim: 128
+num_layers: 4
+epochs: 50
+lr: 0.001
+n_noise_levels: 15
+n_repeats: 10
+structure: true
+pos_dim: 20
+fixed_train: true
+```
+
+## Understanding Results
+
+### NNRD Interpretation
+
+```python
+# Example NNRD values and their meanings:
+NNRD = -0.3  # Strong feature bias - model relies heavily on node features
+NNRD = -0.1  # Moderate feature bias
+NNRD =  0.0  # Balanced - equal reliance on features and structure
+NNRD = +0.1  # Moderate structure bias  
+NNRD = +0.3  # Strong structure bias - model relies heavily on graph structure
+```
+
+### Output Files
+
+The script generates:
+- **WandB logs**: Real-time training metrics and noise analysis results
+- **Result plots**: Performance curves showing degradation under noise
+- **JSON results**: Detailed numerical results for further analysis
+
+### Performance Curves
+
+Look for these patterns in the output plots:
+
+1. **Feature-biased model**: Performance drops sharply with feature noise, stable with structure noise
+2. **Structure-biased model**: Performance drops sharply with structure noise, stable with feature noise  
+3. **Balanced model**: Similar performance drops for both noise types
+
+## Supported Datasets
+
+### Molecular Datasets (OGB)
+- `ogbg-molhiv`: HIV replication inhibition
+- `ogbg-molbace`: BACE enzyme inhibition
+- `ogbg-molbbbp`: Blood-brain barrier penetration
+- `ogbg-molclintox`: Clinical toxicity
+- `ogbg-molsider`: Side effects
+- `ogbg-moltox21`: Toxicity across 21 targets
+
+### Graph Classification (TU Datasets)
+- `TU-Enzymes`: Enzyme classification
+- `TU-Proteins`: Protein classification
+
+### Synthetic Datasets
+The code includes synthetic datasets for controlled experiments:
+- **Easy**: Both features and structure provide same information
+- **Feature**: Only features are informative
+- **Structure**: Only structure is informative  
+- **Coupled**: Both features and structure needed together
+
+## Example Workflows
+
+### 1. Analyze Model Bias on Molecular Data
+
+```bash
+# Test if your model is feature-biased on molecular tasks
+python graph-level.py --dataset ogbg-molhiv --layer_type gin --n_noise_levels 15 --n_repeats 8 --structure false
+
+# Then test with positional encodings to see if structure helps
+python graph-level.py --dataset ogbg-molhiv --layer_type gin --n_noise_levels 15 --n_repeats 8 --structure true
+```
+
+### 2. Compare Different GNN Architectures
+
+```bash
+# Compare GCN, GAT, and GIN on the same dataset
+for layer in gcn gat gin; do
+    python graph-level.py --dataset ogbg-molclintox --layer_type $layer --n_noise_levels 10 --n_repeats 5
+done
+```
+
+### 3. Validate on Synthetic Data
+
+```bash
+# Test on synthetic datasets where ground truth is known
+python graph-level.py --dataset synth-feature --layer_type gin --n_noise_levels 10 --n_repeats 5
+python graph-level.py --dataset synth-structure --layer_type gin --n_noise_levels 10 --n_repeats 5
+```
+
+## Key Research Findings
+
+Based on the original paper, this analysis reveals:
+
+1. **All GNN layers can do graph-less learning** when features are sufficient
+2. **Only GIN can do feature-less learning** due to its post-aggregation parametrization
+3. **GCN and GAT become feature-less capable** when positional encodings are added
+4. **Molecular tasks tend to be feature-biased** across all tested architectures
+5. **Positional encodings increase structure reliance** but don't always improve performance
+
+## Extending the Analysis
+
+### Custom Noise Functions
+
+The current implementation uses:
+- **Structure noise**: Replace graphs with Erdős-Rényi random graphs
+- **Feature noise**: Replace features with random values from same distribution
+
+You can modify these in the respective evaluation functions.
+
+### New Datasets
+
+To add new datasets:
+1. Ensure they follow PyTorch Geometric format
+2. Add dataset loading logic to the evaluation functions
+3. Configure appropriate train/val/test splits
+
+### Different Architectures
+
+The framework supports any PyTorch Geometric model. Add new architectures by:
+1. Implementing the model class
+2. Adding it to the layer type options
+3. Ensuring it follows the standard forward pass interface
+
+## Troubleshooting
+
+### Common Issues
+
+1. **CUDA out of memory**: Reduce `--batch_size` or `--hidden_dim`
+2. **Poor performance**: Check learning rate and number of epochs
+3. **Inconsistent results**: Increase `--n_repeats` for more stable statistics
+
+### Performance Tips
+
+- Use `--fixed-train` for faster analysis (only noise test set)
+- Reduce `--n_noise_levels` for quicker experiments
+- Use smaller models for initial exploration

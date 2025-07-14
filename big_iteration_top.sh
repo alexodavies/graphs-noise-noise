@@ -2,17 +2,17 @@
 
 # Define the list of OGB graph-level datasets
 datasets=(
-    TUDataset:PROTEINS
-    TUDataset:ENZYMES
-    ogbg-molesol
-    ogbg-molfreesolv
-    ogbg-molbace
-    ogbg-molbbbp
-    ogbg-molclintox
+    # TUDataset:PROTEINS
+    # TUDataset:ENZYMES
+    # ogbg-molesol
+    # ogbg-molfreesolv
+    # ogbg-molbace
+    # ogbg-molbbbp
+    # ogbg-molclintox
+    # ogbg-mollipo
+    # ogbg-molsider
+    # ogbg-moltox21
     ogbg-molhiv
-    ogbg-mollipo
-    ogbg-molsider
-    ogbg-moltox21
 )
 
 # Define the list of GNN layers
