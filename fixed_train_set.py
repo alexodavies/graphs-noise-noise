@@ -720,7 +720,8 @@ def load_tu_dataset(dataset_name):
 def evaluate_main_fixed_train(args,
                            t_feature=0,
                            t_structure=0,
-                           eval_on_val=False):
+                           eval_on_val=False,
+                           force_retrain = False):
     """
     Main function to train on clean data and evaluate with specified noise levels.
     Maintains the same argument structure as the original evaluate_main function.
@@ -743,6 +744,7 @@ def evaluate_main_fixed_train(args,
     pos_dim = args.pos_dim
     avoid_cuda = args.no_cuda
     fixed_test = args.fixed_test
+
     
     # Load dataset
     if dataset.startswith("ogbn"):
@@ -814,7 +816,7 @@ def evaluate_main_fixed_train(args,
     print(f"Looking for model at path: {model_save_path}")
     
     if not linear:
-        if os.path.exists(model_save_path):
+        if os.path.exists(model_save_path) and not force_retrain:
             print(f"Loading existing model from {model_save_path}")
             try:
                 model, task_type = load_model(model_save_path, layer_type, device)

@@ -24,7 +24,7 @@ from metrics import nnd
 warnings.filterwarnings('ignore')
 
 
-def evaluate_dataset(args):
+def evaluate_dataset(args, retrain = False):
 
     dataset = args.dataset
     n_noise_levels = args.n_noise_levels
@@ -72,7 +72,10 @@ def evaluate_dataset(args):
             if ti == 0:
                 # struc, tt = evaluate_main(dataset=dataset, t_structure=ts[ti],
                 #                 linear=use_linear, layer_type=args.layer, pos_encodings=args.structure)
-                struc, tt = eval_fn(args)
+
+                # Do we need to retrain the model?
+                force_train = True if retrain and i_repeat == 0 else False
+                struc, tt = eval_fn(args, force_retrain = force_train)
                 ti_performances_structure.append(struc)
                 ti_performances_feature.append(struc)
 
@@ -163,7 +166,7 @@ class TimestepSensitivityAnalyzer:
                 
                 # Run evaluation and get NNRD score
                 try:
-                    nnrd_score = evaluate_dataset(args_copy)
+                    nnrd_score = evaluate_dataset(args_copy, retrain = True)
                     nnrd_scores.append(nnrd_score)
                     
                     print(f"  Bootstrap {bootstrap_idx+1}/{self.n_bootstrap}: NNRD = {nnrd_score:.4f}")
@@ -415,7 +418,7 @@ def create_base_args():
     parser.add_argument("--hidden_dim", type=int, default=100)
     parser.add_argument("--num_layers", type=int, default=3)
     parser.add_argument("--batch_size", type=int, default=256)
-    parser.add_argument("--epochs", type=int, default=25)
+    parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--use_linear", type=bool, default=False)
     parser.add_argument("--structure", type=bool, default=False)
@@ -437,7 +440,7 @@ def main():
     
     # Analysis-specific arguments
     parser.add_argument("--timestep_sizes", nargs="+", type=int, 
-                       default=[2, 5, 10, 15, 20, 30, 40, 50, 75, 100], 
+                       default=[i for i in range(2,20)], 
                        help="List of timestep sizes to test")
     parser.add_argument("--n_bootstrap", type=int, default=3,
                        help="Number of bootstrap samples per timestep size")
