@@ -19,7 +19,8 @@ from datetime import datetime
 import warnings
 import yaml
 import wandb
-from supervised_functions import evaluate_main
+from fixed_train_set import evaluate_main_fixed_train
+from metrics import nnd
 warnings.filterwarnings('ignore')
 
 
@@ -56,15 +57,7 @@ def evaluate_dataset(args):
     feature_performances = dict()
     ts = np.linspace(0, 1, n_noise_levels)
 
-    if args.fixed_train:
-        if args.random_noise_pe:
-            eval_fn = evaluate_main_fixed_train_noise_pes
-        elif args.top_model is not None:
-            eval_fn = evaluate_main_top
-        else:
-            eval_fn = evaluate_main_fixed_train
-    else:
-        eval_fn = evaluate_main
+    eval_fn = evaluate_main_fixed_train
 
     # eval_fn = evaluate_main if not args.fixed_train else evaluate_main_fixed_train
 
@@ -281,7 +274,7 @@ class TimestepSensitivityAnalyzer:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             print(f"Plot saved to: {save_path}")
         
-        plt.show()
+        # plt.show()
         
         return fig
     
@@ -444,7 +437,7 @@ def main():
     
     # Analysis-specific arguments
     parser.add_argument("--timestep_sizes", nargs="+", type=int, 
-                       default=[5, 10, 15, 20], 
+                       default=[2, 5, 10, 15, 20, 30, 40, 50, 75, 100], 
                        help="List of timestep sizes to test")
     parser.add_argument("--n_bootstrap", type=int, default=3,
                        help="Number of bootstrap samples per timestep size")

@@ -1,0 +1,120 @@
+================================================================================
+TIMESTEP SENSITIVITY ANALYSIS REPORT
+================================================================================
+Dataset: synth-easy
+Layer Type: gin
+Structure (Positional Encodings): False
+Bootstrap Samples: 3
+Analysis Date: 2025-07-14 17:05:54
+
+SUMMARY STATISTICS
+----------------------------------------
+Overall NNRD range: [-0.3466, -0.1956]
+Mean standard deviation: 0.0029
+Stability (std of means): 0.0430
+Most stable timestep size: 2 (std = 0.0000)
+
+DETAILED RESULTS BY TIMESTEP SIZE
+----------------------------------------
+Timestep Size: 2
+  Successful runs: 3/3
+  Mean NNRD: -0.346574
+  Std Dev: 0.000000
+  Median: -0.346574
+  IQR: [-0.346574, -0.346574]
+  Range: [-0.346574, -0.346574]
+  Interpretation: Feature-biased
+
+Timestep Size: 5
+  Successful runs: 3/3
+  Mean NNRD: -0.239500
+  Std Dev: 0.004910
+  Median: -0.242855
+  IQR: [-0.242971, -0.237707]
+  Range: [-0.243087, -0.232558]
+  Interpretation: Feature-biased
+
+Timestep Size: 10
+  Successful runs: 3/3
+  Mean NNRD: -0.215114
+  Std Dev: 0.001207
+  Median: -0.215111
+  IQR: [-0.215852, -0.214374]
+  Range: [-0.216593, -0.213637]
+  Interpretation: Feature-biased
+
+Timestep Size: 15
+  Successful runs: 3/3
+  Mean NNRD: -0.213337
+  Std Dev: 0.005922
+  Median: -0.212810
+  IQR: [-0.216825, -0.209586]
+  Range: [-0.220839, -0.206361]
+  Interpretation: Feature-biased
+
+Timestep Size: 20
+  Successful runs: 3/3
+  Mean NNRD: -0.206469
+  Std Dev: 0.004455
+  Median: -0.206474
+  IQR: [-0.209199, -0.203742]
+  Range: [-0.211923, -0.201009]
+  Interpretation: Feature-biased
+
+Timestep Size: 30
+  Successful runs: 3/3
+  Mean NNRD: -0.201522
+  Std Dev: 0.001212
+  Median: -0.201416
+  IQR: [-0.202236, -0.200755]
+  Range: [-0.203057, -0.200094]
+  Interpretation: Feature-biased
+
+Timestep Size: 40
+  Successful runs: 3/3
+  Mean NNRD: -0.203327
+  Std Dev: 0.003191
+  Median: -0.205548
+  IQR: [-0.205583, -0.202181]
+  Range: [-0.205618, -0.198814]
+  Interpretation: Feature-biased
+
+Timestep Size: 50
+  Successful runs: 3/3
+  Mean NNRD: -0.204351
+  Std Dev: 0.002868
+  Median: -0.203620
+  IQR: [-0.205896, -0.202440]
+  Range: [-0.208171, -0.201261]
+  Interpretation: Feature-biased
+
+Timestep Size: 75
+  Successful runs: 3/3
+  Mean NNRD: -0.199649
+  Std Dev: 0.001043
+  Median: -0.200001
+  IQR: [-0.200358, -0.199117]
+  Range: [-0.200714, -0.198233]
+  Interpretation: Feature-biased
+
+Timestep Size: 100
+  Successful runs: 3/3
+  Mean NNRD: -0.195613
+  Std Dev: 0.004606
+  Median: -0.193552
+  IQR: [-0.197773, -0.192423]
+  Range: [-0.201995, -0.191294]
+  Interpretation: Feature-biased
+
+RECOMMENDATIONS
+----------------------------------------
+Top 3 most precise timestep sizes:
+  1. n=2 (std = 0.000000)
+  2. n=75 (std = 0.001043)
+  3. n=10 (std = 0.001207)
+
+Cost-effectiveness analysis:
+  n=5: precision=0.004910, efficiency=40.7367
+  n=10: precision=0.001207, efficiency=82.8487
+  n=15: precision=0.005922, efficiency=11.2568
+  n=20: precision=0.004455, efficiency=11.2222
