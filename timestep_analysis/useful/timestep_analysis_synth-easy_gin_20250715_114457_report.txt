@@ -1,0 +1,191 @@
+================================================================================
+TIMESTEP SENSITIVITY ANALYSIS REPORT
+================================================================================
+Dataset: synth-easy
+Layer Type: gin
+Structure (Positional Encodings): False
+Bootstrap Samples: 3
+Analysis Date: 2025-07-15 11:44:58
+
+SUMMARY STATISTICS
+----------------------------------------
+Overall NNRD range: [-0.3466, -0.2029]
+Mean standard deviation: 0.0059
+Stability (std of means): 0.0345
+Most stable timestep size: 2 (std = 0.0000)
+
+DETAILED RESULTS BY TIMESTEP SIZE
+----------------------------------------
+Timestep Size: 2
+  Successful runs: 3/3
+  Mean NNRD: -0.346574
+  Std Dev: 0.000000
+  Median: -0.346574
+  IQR: [-0.346574, -0.346574]
+  Range: [-0.346574, -0.346574]
+  Interpretation: Feature-biased
+
+Timestep Size: 3
+  Successful runs: 3/3
+  Mean NNRD: -0.282832
+  Std Dev: 0.002235
+  Median: -0.283823
+  IQR: [-0.284379, -0.281780]
+  Range: [-0.284936, -0.279737]
+  Interpretation: Feature-biased
+
+Timestep Size: 4
+  Successful runs: 3/3
+  Mean NNRD: -0.257062
+  Std Dev: 0.008672
+  Median: -0.254608
+  IQR: [-0.261651, -0.251246]
+  Range: [-0.268694, -0.247883]
+  Interpretation: Feature-biased
+
+Timestep Size: 5
+  Successful runs: 3/3
+  Mean NNRD: -0.240669
+  Std Dev: 0.004071
+  Median: -0.239839
+  IQR: [-0.242929, -0.237994]
+  Range: [-0.246018, -0.236149]
+  Interpretation: Feature-biased
+
+Timestep Size: 6
+  Successful runs: 3/3
+  Mean NNRD: -0.231372
+  Std Dev: 0.002229
+  Median: -0.232299
+  IQR: [-0.232908, -0.230299]
+  Range: [-0.233518, -0.228299]
+  Interpretation: Feature-biased
+
+Timestep Size: 7
+  Successful runs: 3/3
+  Mean NNRD: -0.222162
+  Std Dev: 0.008335
+  Median: -0.222885
+  IQR: [-0.227438, -0.217249]
+  Range: [-0.231990, -0.211612]
+  Interpretation: Feature-biased
+
+Timestep Size: 8
+  Successful runs: 3/3
+  Mean NNRD: -0.224062
+  Std Dev: 0.003567
+  Median: -0.225496
+  IQR: [-0.226515, -0.222326]
+  Range: [-0.227534, -0.219156]
+  Interpretation: Feature-biased
+
+Timestep Size: 9
+  Successful runs: 3/3
+  Mean NNRD: -0.235652
+  Std Dev: 0.008520
+  Median: -0.238918
+  IQR: [-0.241490, -0.231446]
+  Range: [-0.244063, -0.223975]
+  Interpretation: Feature-biased
+
+Timestep Size: 10
+  Successful runs: 3/3
+  Mean NNRD: -0.212020
+  Std Dev: 0.001375
+  Median: -0.211894
+  IQR: [-0.212828, -0.211148]
+  Range: [-0.213763, -0.210402]
+  Interpretation: Feature-biased
+
+Timestep Size: 11
+  Successful runs: 3/3
+  Mean NNRD: -0.212006
+  Std Dev: 0.003681
+  Median: -0.210638
+  IQR: [-0.213839, -0.209489]
+  Range: [-0.217040, -0.208340]
+  Interpretation: Feature-biased
+
+Timestep Size: 12
+  Successful runs: 3/3
+  Mean NNRD: -0.216631
+  Std Dev: 0.009177
+  Median: -0.217201
+  IQR: [-0.222388, -0.211159]
+  Range: [-0.227575, -0.205118]
+  Interpretation: Feature-biased
+
+Timestep Size: 13
+  Successful runs: 3/3
+  Mean NNRD: -0.209558
+  Std Dev: 0.006021
+  Median: -0.211515
+  IQR: [-0.213636, -0.206459]
+  Range: [-0.215757, -0.201402]
+  Interpretation: Feature-biased
+
+Timestep Size: 14
+  Successful runs: 3/3
+  Mean NNRD: -0.206939
+  Std Dev: 0.005095
+  Median: -0.204648
+  IQR: [-0.209324, -0.203408]
+  Range: [-0.214001, -0.202167]
+  Interpretation: Feature-biased
+
+Timestep Size: 15
+  Successful runs: 3/3
+  Mean NNRD: -0.214843
+  Std Dev: 0.011592
+  Median: -0.207671
+  IQR: [-0.219434, -0.206667]
+  Range: [-0.231196, -0.205663]
+  Interpretation: Feature-biased
+
+Timestep Size: 16
+  Successful runs: 3/3
+  Mean NNRD: -0.209268
+  Std Dev: 0.006765
+  Median: -0.213701
+  IQR: [-0.214048, -0.206705]
+  Range: [-0.214394, -0.199709]
+  Interpretation: Feature-biased
+
+Timestep Size: 17
+  Successful runs: 3/3
+  Mean NNRD: -0.205416
+  Std Dev: 0.012985
+  Median: -0.213757
+  IQR: [-0.214585, -0.200417]
+  Range: [-0.215414, -0.187077]
+  Interpretation: Feature-biased
+
+Timestep Size: 18
+  Successful runs: 3/3
+  Mean NNRD: -0.211603
+  Std Dev: 0.006905
+  Median: -0.215630
+  IQR: [-0.216463, -0.208758]
+  Range: [-0.217295, -0.201885]
+  Interpretation: Feature-biased
+
+Timestep Size: 19
+  Successful runs: 3/3
+  Mean NNRD: -0.202852
+  Std Dev: 0.005583
+  Median: -0.204672
+  IQR: [-0.206633, -0.199981]
+  Range: [-0.208595, -0.195289]
+  Interpretation: Feature-biased
+
+RECOMMENDATIONS
+----------------------------------------
+Top 3 most precise timestep sizes:
+  1. n=2 (std = 0.000000)
+  2. n=10 (std = 0.001375)
+  3. n=6 (std = 0.002229)
+
+Cost-effectiveness analysis:
+  n=5: precision=0.004071, efficiency=49.1224
+  n=10: precision=0.001375, efficiency=72.7405
+  n=15: precision=0.011592, efficiency=5.7510
