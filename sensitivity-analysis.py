@@ -440,7 +440,7 @@ def main():
     
     # Analysis-specific arguments
     parser.add_argument("--timestep_sizes", nargs="+", type=int, 
-                       default=[i for i in range(4,100)], 
+                       default=[i for i in range(4,100,4)], 
                        help="List of timestep sizes to test")
     parser.add_argument("--n_bootstrap", type=int, default=3,
                        help="Number of bootstrap samples per timestep size")
