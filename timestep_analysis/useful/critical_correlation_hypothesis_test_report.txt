@@ -1,0 +1,163 @@
+================================================================================
+CRITICAL CORRELATION HYPOTHESIS TEST REPORT
+================================================================================
+Significance Level (α): 0.05
+
+HYPOTHESIS:
+H₀: There is NO significant correlation between timestep size and CV(NNRD) (ρ = 0)
+H₁: There IS a significant correlation between timestep size and CV(NNRD) (ρ ≠ 0)
+
+WHERE CV(NNRD) = Standard Deviation / Mean (Coefficient of Variation)
+
+INTERPRETATION:
+- If p-value ≤ α: REJECT H₀ (significant correlation found)
+- If p-value > α: FAIL TO REJECT H₀ (no significant correlation)
+- CV measures relative variability (stability)
+- Lower CV = more stable/consistent performance
+
+SUMMARY:
+- Total experiments: 4
+- Valid experiments (sufficient data): 4
+- Experiments with errors: 0
+- Experiments with significant CV correlation: 1
+- Percentage with significant correlation: 25.0%
+
+DETAILED RESULTS:
+--------------------------------------------------------------------------------
+
+synth-easy_gin_structFalse:
+  Data Points: 24
+  Timestep Range: (np.int64(4), np.int64(96))
+  CV Range: (-0.052737, -0.005058)
+  
+  LINEAR REGRESSION:
+    Slope = 0.00022562 ± 0.00008460
+    Intercept = -0.037130
+    R² = 0.2443
+    Regression p-value = 0.014080
+    Slope Direction: POSITIVE (CV increases with timestep size → less stable)
+  
+  PEARSON CORRELATION:
+    r = 0.4943
+    p-value = 0.014080
+    Effect size: medium
+    95% CI: [0.1135, 0.7485]
+    → REJECT H₀: Significant correlation found
+  
+  SPEARMAN CORRELATION (rank-based):
+    ρ = 0.5435
+    p-value = 0.006055
+    Effect size: large
+    → REJECT H₀: Significant correlation found
+  
+  KENDALL'S TAU (rank-based):
+    τ = 0.3623
+    p-value = 0.012905
+    → REJECT H₀: Significant correlation found
+  --------------------------------------------------
+
+synth-structure_gin_structFalse:
+  Data Points: 24
+  Timestep Range: (np.int64(4), np.int64(96))
+  CV Range: (0.002648, 0.295462)
+  
+  LINEAR REGRESSION:
+    Slope = 0.00053968 ± 0.00041979
+    Intercept = -0.000706
+    R² = 0.0699
+    Regression p-value = 0.211951
+    Slope Direction: POSITIVE (CV increases with timestep size → less stable)
+  
+  PEARSON CORRELATION:
+    r = 0.2643
+    p-value = 0.211951
+    Effect size: small
+    95% CI: [-0.1557, 0.6034]
+    → FAIL TO REJECT H₀: No significant correlation
+  
+  SPEARMAN CORRELATION (rank-based):
+    ρ = -0.0174
+    p-value = 0.935715
+    Effect size: negligible
+    → FAIL TO REJECT H₀: No significant correlation
+  
+  KENDALL'S TAU (rank-based):
+    τ = -0.0217
+    p-value = 0.902397
+    → FAIL TO REJECT H₀: No significant correlation
+  --------------------------------------------------
+
+synth-feature_gin_structFalse:
+  Data Points: 24
+  Timestep Range: (np.int64(4), np.int64(96))
+  CV Range: (-0.068592, -0.001941)
+  
+  LINEAR REGRESSION:
+    Slope = -0.00009799 ± 0.00010156
+    Intercept = -0.021436
+    R² = 0.0406
+    Regression p-value = 0.345113
+    Slope Direction: NEGATIVE (CV decreases with timestep size → more stable)
+  
+  PEARSON CORRELATION:
+    r = -0.2015
+    p-value = 0.345113
+    Effect size: small
+    95% CI: [-0.5594, 0.2198]
+    → FAIL TO REJECT H₀: No significant correlation
+  
+  SPEARMAN CORRELATION (rank-based):
+    ρ = -0.2217
+    p-value = 0.297718
+    Effect size: small
+    → FAIL TO REJECT H₀: No significant correlation
+  
+  KENDALL'S TAU (rank-based):
+    τ = -0.1812
+    p-value = 0.226875
+    → FAIL TO REJECT H₀: No significant correlation
+  --------------------------------------------------
+
+synth-coupled_gin_structFalse:
+  Data Points: 24
+  Timestep Range: (np.int64(4), np.int64(96))
+  CV Range: (0.027386, 0.195197)
+  
+  LINEAR REGRESSION:
+    Slope = 0.00042776 ± 0.00028668
+    Intercept = 0.046298
+    R² = 0.0919
+    Regression p-value = 0.149874
+    Slope Direction: POSITIVE (CV increases with timestep size → less stable)
+  
+  PEARSON CORRELATION:
+    r = 0.3031
+    p-value = 0.149874
+    Effect size: medium
+    95% CI: [-0.1142, 0.6296]
+    → FAIL TO REJECT H₀: No significant correlation
+  
+  SPEARMAN CORRELATION (rank-based):
+    ρ = 0.1200
+    p-value = 0.576490
+    Effect size: small
+    → FAIL TO REJECT H₀: No significant correlation
+  
+  KENDALL'S TAU (rank-based):
+    τ = 0.0580
+    p-value = 0.712820
+    → FAIL TO REJECT H₀: No significant correlation
+  --------------------------------------------------
+
+================================================================================
+NOTES:
+- CV = Coefficient of Variation = std_nnrd / mean_nnrd
+- Lower CV indicates more stable/consistent performance
+- Positive slope: CV increases with timestep (less stable)
+- Negative slope: CV decreases with timestep (more stable)
+- Pearson r measures linear correlation
+- Spearman ρ measures monotonic correlation (rank-based)
+- Kendall τ is another rank-based correlation measure
+- Effect sizes: negligible (<0.1), small (0.1-0.3), medium (0.3-0.5),
+  large (0.5-0.7), very large (>0.7)
+================================================================================
