@@ -235,7 +235,8 @@ def compute_consistency_metrics(results: Dict, variable_name: str) -> Dict:
     Compute consistency metrics for a sensitivity test.
 
     Returns:
-        Dict with CV, range, sign_consistency, and correlation statistics.
+        Dict with CV, range, sign_consistency, correlation statistics,
+        and formal hypothesis test results.
     """
     if not results:
         return {}
@@ -243,6 +244,14 @@ def compute_consistency_metrics(results: Dict, variable_name: str) -> Dict:
     keys = list(results.keys())
     means = [results[k]["nnrd_mean"] for k in keys]
     stds = [results[k]["nnrd_std"] for k in keys]
+
+    # Collect all individual NNRD scores across all parameter values
+    all_scores = []
+    scores_by_param = []
+    for k in keys:
+        scores = results[k]["nnrd_scores"]
+        all_scores.extend(scores)
+        scores_by_param.append(scores)
 
     # Coefficient of variation (across different parameter values)
     overall_mean = np.mean(means)
@@ -260,15 +269,45 @@ def compute_consistency_metrics(results: Dict, variable_name: str) -> Dict:
     try:
         numeric_keys = [float(k) if not isinstance(k, (int, float)) else k for k in keys]
         if all(isinstance(k, (int, float)) for k in numeric_keys):
-            correlation, p_value = stats.spearmanr(numeric_keys, means)
+            correlation, corr_p_value = stats.spearmanr(numeric_keys, means)
         else:
-            correlation, p_value = None, None
+            correlation, corr_p_value = None, None
     except:
-        correlation, p_value = None, None
+        correlation, corr_p_value = None, None
+
+    # === FORMAL STATISTICAL TESTS ===
+
+    # 1. One-sample t-test: Is NNRD significantly different from zero?
+    #    H0: mean(NNRD) = 0
+    #    This tests whether the metric detects a real bias
+    if len(all_scores) >= 2:
+        t_stat_zero, p_value_zero = stats.ttest_1samp(all_scores, 0)
+        significant_nonzero = p_value_zero < 0.05
+    else:
+        t_stat_zero, p_value_zero, significant_nonzero = None, None, None
+
+    # 2. One-way ANOVA / Kruskal-Wallis: Does NNRD vary with parameter?
+    #    H0: All parameter groups have the same mean NNRD
+    #    Rejecting H0 means NNRD is sensitive to the nuisance parameter (bad)
+    if len(scores_by_param) >= 2 and all(len(s) >= 2 for s in scores_by_param):
+        # Use Kruskal-Wallis (non-parametric, fewer assumptions)
+        h_stat, p_value_kw = stats.kruskal(*scores_by_param)
+        significant_variation = p_value_kw < 0.05
+    else:
+        h_stat, p_value_kw, significant_variation = None, None, None
+
+    # 3. Levene's test: Is variance homogeneous across parameter values?
+    #    H0: All groups have equal variance
+    if len(scores_by_param) >= 2 and all(len(s) >= 2 for s in scores_by_param):
+        levene_stat, p_value_levene = stats.levene(*scores_by_param)
+        homogeneous_variance = p_value_levene >= 0.05
+    else:
+        levene_stat, p_value_levene, homogeneous_variance = None, None, None
 
     return {
         "variable": variable_name,
         "n_values_tested": len(keys),
+        "n_total_samples": len(all_scores),
         "overall_mean": overall_mean,
         "overall_std": overall_std,
         "cv": cv,
@@ -278,7 +317,17 @@ def compute_consistency_metrics(results: Dict, variable_name: str) -> Dict:
         "sign_consistent": sign_consistent,
         "avg_within_std": np.mean(stds),
         "correlation": correlation,
-        "correlation_p_value": p_value
+        "correlation_p_value": corr_p_value,
+        # Formal tests
+        "t_stat_vs_zero": t_stat_zero,
+        "p_value_vs_zero": p_value_zero,
+        "significant_nonzero": significant_nonzero,
+        "kruskal_wallis_h": h_stat,
+        "p_value_kruskal_wallis": p_value_kw,
+        "significant_variation": significant_variation,
+        "levene_stat": levene_stat,
+        "p_value_levene": p_value_levene,
+        "homogeneous_variance": homogeneous_variance,
     }
 
 
@@ -323,6 +372,7 @@ def generate_sensitivity_report(
 
             lines.append(f"  {test_name}:")
             lines.append(f"    Values tested: {metrics['n_values_tested']}")
+            lines.append(f"    Total samples: {metrics['n_total_samples']}")
             lines.append(f"    Mean NNRD: {metrics['overall_mean']:.4f} ± {metrics['overall_std']:.4f}")
             lines.append(f"    CV (consistency): {metrics['cv']:.4f}")
             lines.append(f"    Range: {metrics['range']:.4f}")
@@ -330,6 +380,59 @@ def generate_sensitivity_report(
             if metrics['correlation'] is not None:
                 lines.append(f"    Correlation with param: {metrics['correlation']:.3f} (p={metrics['correlation_p_value']:.4f})")
             lines.append("")
+
+        lines.append("")
+
+    # Statistical tests section
+    lines.append("=" * 80)
+    lines.append("STATISTICAL HYPOTHESIS TESTS")
+    lines.append("=" * 80)
+    lines.append("")
+
+    lines.append("Test 1: One-sample t-test against zero")
+    lines.append("  H0: NNRD = 0 (metric detects no bias)")
+    lines.append("  Rejecting H0 confirms the metric detects a real structure/feature bias")
+    lines.append("")
+
+    lines.append("Test 2: Kruskal-Wallis test across parameter values")
+    lines.append("  H0: NNRD is the same across all parameter values")
+    lines.append("  Rejecting H0 means NNRD varies with the nuisance parameter (undesirable)")
+    lines.append("")
+
+    lines.append("Test 3: Levene's test for homogeneity of variance")
+    lines.append("  H0: Variance is equal across parameter values")
+    lines.append("  Rejecting H0 means variance changes with parameter (undesirable)")
+    lines.append("")
+
+    for label_type, test_name, metrics in summary_data:
+        lines.append(f"{label_type}/{test_name}:")
+
+        # Test vs zero
+        if metrics['p_value_vs_zero'] is not None:
+            sig_zero = "***" if metrics['p_value_vs_zero'] < 0.001 else \
+                       "**" if metrics['p_value_vs_zero'] < 0.01 else \
+                       "*" if metrics['p_value_vs_zero'] < 0.05 else ""
+            lines.append(f"  t-test vs zero: t={metrics['t_stat_vs_zero']:.3f}, p={metrics['p_value_vs_zero']:.4f} {sig_zero}")
+            lines.append(f"    -> NNRD is {'SIGNIFICANTLY' if metrics['significant_nonzero'] else 'NOT significantly'} different from zero")
+
+        # Kruskal-Wallis
+        if metrics['p_value_kruskal_wallis'] is not None:
+            sig_kw = "***" if metrics['p_value_kruskal_wallis'] < 0.001 else \
+                     "**" if metrics['p_value_kruskal_wallis'] < 0.01 else \
+                     "*" if metrics['p_value_kruskal_wallis'] < 0.05 else ""
+            lines.append(f"  Kruskal-Wallis: H={metrics['kruskal_wallis_h']:.3f}, p={metrics['p_value_kruskal_wallis']:.4f} {sig_kw}")
+            if metrics['significant_variation']:
+                lines.append(f"    -> NNRD VARIES significantly with {test_name} (metric is sensitive)")
+            else:
+                lines.append(f"    -> NNRD does NOT vary significantly with {test_name} (metric is robust)")
+
+        # Levene's test
+        if metrics['p_value_levene'] is not None:
+            sig_lev = "***" if metrics['p_value_levene'] < 0.001 else \
+                      "**" if metrics['p_value_levene'] < 0.01 else \
+                      "*" if metrics['p_value_levene'] < 0.05 else ""
+            lines.append(f"  Levene's test: W={metrics['levene_stat']:.3f}, p={metrics['p_value_levene']:.4f} {sig_lev}")
+            lines.append(f"    -> Variance is {'HOMOGENEOUS' if metrics['homogeneous_variance'] else 'HETEROGENEOUS'} across parameter values")
 
         lines.append("")
 
@@ -341,8 +444,8 @@ def generate_sensitivity_report(
 
     lines.append("Criteria for INVARIANCE (sign preservation):")
     lines.append("  - NNRD sign should remain consistent across parameter changes")
-    lines.append("  - Structure-labeled data: expect NNRD > 0")
-    lines.append("  - Feature-labeled data: expect NNRD < 0")
+    lines.append("  - Structure-labelled data: expect NNRD > 0")
+    lines.append("  - Feature-labelled data: expect NNRD < 0")
     lines.append("")
 
     lines.append("Criteria for CONSISTENCY (magnitude stability):")
@@ -367,20 +470,28 @@ def generate_sensitivity_report(
 
         invariance = "PASS" if metrics['sign_consistent'] and sign_ok else "FAIL"
 
+        # Combine with statistical evidence
+        stat_support = ""
+        if metrics['significant_nonzero'] and not metrics['significant_variation']:
+            stat_support = " [statistically supported]"
+        elif metrics['significant_variation']:
+            stat_support = " [WARNING: significant parameter sensitivity]"
+
         lines.append(f"{label_type}/{test_name}:")
         lines.append(f"  Invariance: {invariance} (expected={expected_sign}, got={actual_sign}, sign_consistent={metrics['sign_consistent']})")
-        lines.append(f"  Consistency: {consistency} (CV={cv:.3f})")
+        lines.append(f"  Consistency: {consistency} (CV={cv:.3f}){stat_support}")
         lines.append("")
 
     lines.append("=" * 80)
     lines.append("INTERPRETATION")
     lines.append("=" * 80)
     lines.append("")
-    lines.append("- INVARIANCE tests whether the metric correctly identifies")
-    lines.append("  structure vs feature reliance regardless of dataset parameters.")
-    lines.append("")
-    lines.append("- CONSISTENCY tests whether the metric magnitude is stable")
-    lines.append("  (low variance) across different dataset configurations.")
+    lines.append("A robust NNRD metric should show:")
+    lines.append("  1. Significant difference from zero (t-test p < 0.05)")
+    lines.append("  2. NO significant variation with nuisance parameters (Kruskal-Wallis p >= 0.05)")
+    lines.append("  3. Homogeneous variance across conditions (Levene p >= 0.05)")
+    lines.append("  4. Correct sign for the label type (+ve for structure, -ve for feature)")
+    lines.append("  5. Low coefficient of variation (CV < 0.3)")
     lines.append("")
     lines.append("- A robust metric should show:")
     lines.append("  1. Sign invariance: correct direction for all parameter values")

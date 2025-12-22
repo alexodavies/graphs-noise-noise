@@ -49,6 +49,14 @@ DEFAULT_SIZE_RANGES = [
 DEFAULT_DENSITIES = [0.05, 0.1, 0.2, 0.3, 0.5]
 
 
+def _load_existing_results(output_path: str):
+    """Load existing results if available."""
+    if os.path.exists(output_path):
+        with open(output_path, 'r') as f:
+            return json.load(f)
+    return None
+
+
 def run_feature_dim_analysis(
     label_type: str,
     config: SensitivityConfig,
@@ -60,6 +68,20 @@ def run_feature_dim_analysis(
     """Run feature dimensionality sensitivity analysis."""
     if feature_dims is None:
         feature_dims = DEFAULT_FEATURE_DIMS
+
+    output_path = os.path.join(output_dir, f"feature_dim_{label_type}.json")
+
+    # Check for existing results
+    existing = _load_existing_results(output_path)
+    if existing is not None:
+        print(f"\n{'='*60}")
+        print(f"SKIPPING Feature Dimensionality Analysis (label_type={label_type})")
+        print(f"Results already exist at: {output_path}")
+        print(f"{'='*60}\n")
+        # Re-generate plot with existing data
+        plot_path = os.path.join(output_dir, f"feature_dim_{label_type}.png")
+        plot_feature_dim_results(existing, save_path=plot_path, label_type=label_type)
+        return existing
 
     print(f"\n{'='*60}")
     print(f"Running Feature Dimensionality Analysis")
@@ -77,7 +99,6 @@ def run_feature_dim_analysis(
     )
 
     # Save results
-    output_path = os.path.join(output_dir, f"feature_dim_{label_type}.json")
     save_sensitivity_results(results, output_path)
     print(f"Results saved to: {output_path}")
 
@@ -100,6 +121,20 @@ def run_graph_size_analysis(
     if size_ranges is None:
         size_ranges = DEFAULT_SIZE_RANGES
 
+    output_path = os.path.join(output_dir, f"graph_size_{label_type}.json")
+
+    # Check for existing results
+    existing = _load_existing_results(output_path)
+    if existing is not None:
+        print(f"\n{'='*60}")
+        print(f"SKIPPING Graph Size Analysis (label_type={label_type})")
+        print(f"Results already exist at: {output_path}")
+        print(f"{'='*60}\n")
+        # Re-generate plot with existing data
+        plot_path = os.path.join(output_dir, f"graph_size_{label_type}.png")
+        plot_graph_size_results(existing, save_path=plot_path, label_type=label_type)
+        return existing
+
     print(f"\n{'='*60}")
     print(f"Running Graph Size Analysis")
     print(f"Label type: {label_type}")
@@ -116,7 +151,6 @@ def run_graph_size_analysis(
     )
 
     # Save results
-    output_path = os.path.join(output_dir, f"graph_size_{label_type}.json")
     save_sensitivity_results(results, output_path)
     print(f"Results saved to: {output_path}")
 
@@ -139,6 +173,20 @@ def run_density_analysis(
     if densities is None:
         densities = DEFAULT_DENSITIES
 
+    output_path = os.path.join(output_dir, f"density_{label_type}.json")
+
+    # Check for existing results
+    existing = _load_existing_results(output_path)
+    if existing is not None:
+        print(f"\n{'='*60}")
+        print(f"SKIPPING Graph Density Analysis (label_type={label_type})")
+        print(f"Results already exist at: {output_path}")
+        print(f"{'='*60}\n")
+        # Re-generate plot with existing data
+        plot_path = os.path.join(output_dir, f"density_{label_type}.png")
+        plot_density_results(existing, save_path=plot_path, label_type=label_type)
+        return existing
+
     print(f"\n{'='*60}")
     print(f"Running Graph Density Analysis")
     print(f"Label type: {label_type}")
@@ -155,7 +203,6 @@ def run_density_analysis(
     )
 
     # Save results
-    output_path = os.path.join(output_dir, f"density_{label_type}.json")
     save_sensitivity_results(results, output_path)
     print(f"Results saved to: {output_path}")
 
