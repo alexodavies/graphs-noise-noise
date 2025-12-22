@@ -27,9 +27,10 @@ def plot_feature_dim_results(
     """
     fig, ax = plt.subplots(figsize=(6, 4))
 
+    # Keys may be strings (from JSON) or ints
     dims = sorted([int(k) for k in results.keys()])
-    means = [results[d]["nnrd_mean"] for d in dims]
-    stds = [results[d]["nnrd_std"] for d in dims]
+    means = [results[str(d)]["nnrd_mean"] for d in dims]
+    stds = [results[str(d)]["nnrd_std"] for d in dims]
 
     ax.errorbar(dims, means, yerr=stds, marker='o', capsize=5,
                 linewidth=2, markersize=8, color='steelblue')
@@ -119,9 +120,10 @@ def plot_density_results(
     """
     fig, ax = plt.subplots(figsize=(6, 4))
 
+    # Keys may be strings (from JSON) or floats
     densities = sorted([float(k) for k in results.keys()])
-    means = [results[d]["nnrd_mean"] for d in densities]
-    stds = [results[d]["nnrd_std"] for d in densities]
+    means = [results[str(d) if str(d) in results else d]["nnrd_mean"] for d in densities]
+    stds = [results[str(d) if str(d) in results else d]["nnrd_std"] for d in densities]
 
     ax.errorbar(densities, means, yerr=stds, marker='^', capsize=5,
                 linewidth=2, markersize=8, color='seagreen')
@@ -173,8 +175,8 @@ def plot_combined_summary(
         if "feature_dim" in results:
             ax = axes[row, 0]
             dims = sorted([int(k) for k in results["feature_dim"].keys()])
-            means = [results["feature_dim"][d]["nnrd_mean"] for d in dims]
-            stds = [results["feature_dim"][d]["nnrd_std"] for d in dims]
+            means = [results["feature_dim"][str(d)]["nnrd_mean"] for d in dims]
+            stds = [results["feature_dim"][str(d)]["nnrd_std"] for d in dims]
 
             ax.errorbar(dims, means, yerr=stds, marker=markers[label_type],
                         capsize=4, linewidth=2, markersize=6, color=colors[label_type])
@@ -207,9 +209,10 @@ def plot_combined_summary(
         # Density
         if "density" in results:
             ax = axes[row, 2]
-            densities = sorted([float(k) for k in results["density"].keys()])
-            means = [results["density"][d]["nnrd_mean"] for d in densities]
-            stds = [results["density"][d]["nnrd_std"] for d in densities]
+            density_data = results["density"]
+            densities = sorted([float(k) for k in density_data.keys()])
+            means = [density_data[str(d) if str(d) in density_data else d]["nnrd_mean"] for d in densities]
+            stds = [density_data[str(d) if str(d) in density_data else d]["nnrd_std"] for d in densities]
 
             ax.errorbar(densities, means, yerr=stds, marker=markers[label_type],
                         capsize=4, linewidth=2, markersize=6, color=colors[label_type])
