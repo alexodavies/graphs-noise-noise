@@ -27,10 +27,16 @@ def plot_feature_dim_results(
     """
     fig, ax = plt.subplots(figsize=(6, 4))
 
-    # Keys may be strings (from JSON) or ints
-    dims = sorted([int(k) for k in results.keys()])
-    means = [results[str(d)]["nnrd_mean"] for d in dims]
-    stds = [results[str(d)]["nnrd_std"] for d in dims]
+    try:
+        # Keys may be strings (from JSON) or ints
+        dims = sorted([int(k) for k in results.keys()])
+        means = [results[str(d)]["nnrd_mean"] for d in dims]
+        stds = [results[str(d)]["nnrd_std"] for d in dims]
+    except:
+        # Keys may be strings (from JSON) or ints
+        dims = sorted([k for k in results.keys()])
+        means = [results[str(d)]["nnrd_mean"] for d in dims]
+        stds = [results[str(d)]["nnrd_std"] for d in dims]
 
     ax.errorbar(dims, means, yerr=stds, marker='o', capsize=5,
                 linewidth=2, markersize=8, color='steelblue')
