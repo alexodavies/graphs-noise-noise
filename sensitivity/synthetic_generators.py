@@ -198,7 +198,7 @@ class ConfigurableSyntheticDataset(InMemoryDataset):
             self.process()
 
         self.task_type = "classification"
-        self.data, self.slices = torch.load(self.processed_paths[0])
+        self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
 
     @property
     def raw_file_names(self):
