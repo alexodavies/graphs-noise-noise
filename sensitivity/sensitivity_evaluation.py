@@ -286,7 +286,17 @@ def evaluate_graph_density(
 
     Returns:
         Dict with results per density.
+
+    Raises:
+        ValueError: If label_type is "structure" (density changes destroy structural signal).
     """
+    if label_type == "structure":
+        raise ValueError(
+            "Density sensitivity testing is not supported for structure-labeled datasets. "
+            "Varying density destroys the structural distinction between graph classes. "
+            "Use label_type='feature' for density sensitivity tests."
+        )
+
     results = {}
 
     for density in tqdm(densities, desc="Densities", disable=not verbose):

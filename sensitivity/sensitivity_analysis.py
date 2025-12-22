@@ -198,14 +198,15 @@ def run_full_analysis(
             output_dir=output_dir
         )
 
-        # Density
-        all_results[label_type]["density"] = run_density_analysis(
-            label_type=label_type,
-            config=config,
-            num_samples=num_samples,
-            n_repeats=n_repeats,
-            output_dir=output_dir
-        )
+        # Density (only for feature-labeled data)
+        if label_type == "feature":
+            all_results[label_type]["density"] = run_density_analysis(
+                label_type=label_type,
+                config=config,
+                num_samples=num_samples,
+                n_repeats=n_repeats,
+                output_dir=output_dir
+            )
 
     # Generate combined summary plot
     summary_path = os.path.join(output_dir, "sensitivity_summary.png")
@@ -367,6 +368,10 @@ Examples:
                     output_dir=args.output_dir
                 )
             elif args.test == "density":
+                if label_type == "structure":
+                    print(f"Skipping density test for label_type='structure' "
+                          f"(density changes destroy structural signal)")
+                    continue
                 run_density_analysis(
                     label_type=label_type,
                     config=config,
