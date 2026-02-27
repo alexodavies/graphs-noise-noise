@@ -59,6 +59,10 @@ def run_node_noise_sweep(
     Build a NodeClassificationDataset for `scenario` and run a full
     structure-noise / feature-noise sweep.
 
+    Protocol: train once on clean train data, then evaluate the frozen model
+    across noise levels applied only to the test set (n_repeats independent
+    noise draws per level).
+
     Returns a result dict compatible with nnd() and plot_results():
       {
         "dataset":    "node-<scenario>",
@@ -85,6 +89,12 @@ def run_node_noise_sweep(
     test_dataset = dataset[train_n + val_n:]
 
     device = torch.device(config.device)
+
+    # --- Train once on clean data ---
+    if verbose:
+        print(f"[{scenario}] Training on clean data...")
+    model = _build_and_train_model(train_dataset, config, device)
+
     ts = np.linspace(0, 1, config.n_noise_levels)
 
     structure_performances: Dict[str, list] = {}
@@ -102,22 +112,16 @@ def run_node_noise_sweep(
 
         for _ in range(config.n_repeats):
             if ti == 0:
-                # No-noise baseline: same run counts for both curves
-                perf = _train_and_eval(
-                    train_dataset, test_dataset, config, device, 0.0, 0.0
-                )
+                # No-noise baseline: same evaluation counts for both curves
+                perf = _eval_with_noise(model, test_dataset, config, device, 0.0, 0.0)
                 ti_struct.append(perf)
                 ti_feat.append(perf)
             else:
                 ti_struct.append(
-                    _train_and_eval(
-                        train_dataset, test_dataset, config, device, ts[ti], 0.0
-                    )
+                    _eval_with_noise(model, test_dataset, config, device, ts[ti], 0.0)
                 )
                 ti_feat.append(
-                    _train_and_eval(
-                        train_dataset, test_dataset, config, device, 0.0, ts[ti]
-                    )
+                    _eval_with_noise(model, test_dataset, config, device, 0.0, ts[ti])
                 )
 
         structure_performances[str(ts[ti])] = [str(s) for s in ti_struct]
@@ -134,40 +138,44 @@ def run_node_noise_sweep(
     }
 
 
-def _train_and_eval(
+def _build_and_train_model(
     train_dataset,
-    test_dataset,
     config: NodeClassificationConfig,
     device: torch.device,
-    t_structure: float,
-    t_feature: float,
-) -> float:
-    """Apply noise, train a fresh model, and return test ROC-AUC."""
-    noisy_train = add_noise_to_dataset(
-        copy.deepcopy(train_dataset), t_structure, t_feature
-    )
-    noisy_test = add_noise_to_dataset(
-        copy.deepcopy(test_dataset), t_structure, t_feature
-    )
-
-    train_loader = DataLoader(noisy_train, batch_size=config.batch_size, shuffle=True)
-    test_loader = DataLoader(noisy_test, batch_size=config.batch_size, shuffle=False)
+) -> "FlexibleGNN":
+    """Build and train a fresh model on clean train data. Returns the trained model."""
+    train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
 
     model = FlexibleGNN(
         layer_type=config.layer_type,
         node_in_dim=1,
         edge_in_dim=1,
         hidden_dim=config.hidden_dim,
-        num_classes=1,          # Binary classification → sigmoid + BCE
+        num_classes=1,
         num_layers=config.num_layers,
-        task_type="node",        # No global pooling
+        task_type="node",
         model_kwargs=_GNN_KWARGS.get(config.layer_type, {}),
         pe_dim=0,
     ).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
-
     for _ in range(config.epochs):
         train(model, optimizer, train_loader, device, "classification")
 
+    return model
+
+
+def _eval_with_noise(
+    model,
+    test_dataset,
+    config: NodeClassificationConfig,
+    device: torch.device,
+    t_structure: float,
+    t_feature: float,
+) -> float:
+    """Apply noise to a fresh copy of the test set and evaluate the frozen model."""
+    noisy_test = add_noise_to_dataset(
+        copy.deepcopy(test_dataset), t_structure, t_feature
+    )
+    test_loader = DataLoader(noisy_test, batch_size=config.batch_size, shuffle=False)
     return evaluate(model, test_loader, device, "classification")
