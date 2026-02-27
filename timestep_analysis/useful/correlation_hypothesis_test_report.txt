@@ -1,0 +1,156 @@
+================================================================================
+CORRELATION HYPOTHESIS TEST REPORT
+================================================================================
+Significance Level (α): 0.05
+
+HYPOTHESIS:
+H₀: There is NO significant correlation between timestep size and NNRD (ρ = 0)
+H₁: There IS a significant correlation between timestep size and NNRD (ρ ≠ 0)
+
+INTERPRETATION:
+- If p-value ≤ α: REJECT H₀ (significant correlation found)
+- If p-value > α: FAIL TO REJECT H₀ (no significant correlation)
+
+SUMMARY:
+- Total experiments: 4
+- Experiments with significant correlation: 3
+- Percentage with significant correlation: 75.0%
+
+DETAILED RESULTS:
+--------------------------------------------------------------------------------
+
+synth-easy_gin_structFalse:
+  Data Points: 24
+  Timestep Range: (np.int64(4), np.int64(96))
+  NNRD Range: (-0.2535, -0.1949)
+  
+  LINEAR REGRESSION:
+    Slope = 0.000281 ± 0.000067
+    Intercept = -0.2190
+    R² = 0.4431
+    Regression p-value = 0.000385
+    Slope Direction: POSITIVE (NNRD increases with timestep size)
+  
+  PEARSON CORRELATION:
+    r = 0.6657
+    p-value = 0.000385
+    Effect size: large
+    95% CI: [0.3586, 0.8428]
+    → REJECT H₀: Significant correlation found
+  
+  SPEARMAN CORRELATION (rank-based):
+    ρ = 0.8322
+    p-value = 0.000000
+    Effect size: very large
+    → REJECT H₀: Significant correlation found
+  
+  KENDALL'S TAU (rank-based):
+    τ = 0.6739
+    p-value = 0.000001
+    → REJECT H₀: Significant correlation found
+  --------------------------------------------------
+
+synth-structure_gin_structFalse:
+  Data Points: 24
+  Timestep Range: (np.int64(4), np.int64(96))
+  NNRD Range: (0.2537, 0.3146)
+  
+  LINEAR REGRESSION:
+    Slope = -0.000231 ± 0.000073
+    Intercept = 0.3140
+    R² = 0.3147
+    Regression p-value = 0.004348
+    Slope Direction: NEGATIVE (NNRD decreases with timestep size)
+  
+  PEARSON CORRELATION:
+    r = -0.5610
+    p-value = 0.004348
+    Effect size: large
+    95% CI: [-0.7864, -0.2037]
+    → REJECT H₀: Significant correlation found
+  
+  SPEARMAN CORRELATION (rank-based):
+    ρ = -0.7243
+    p-value = 0.000063
+    Effect size: very large
+    → REJECT H₀: Significant correlation found
+  
+  KENDALL'S TAU (rank-based):
+    τ = -0.5362
+    p-value = 0.000136
+    → REJECT H₀: Significant correlation found
+  --------------------------------------------------
+
+synth-feature_gin_structFalse:
+  Data Points: 24
+  Timestep Range: (np.int64(4), np.int64(96))
+  NNRD Range: (-0.2512, -0.1940)
+  
+  LINEAR REGRESSION:
+    Slope = 0.000237 ± 0.000066
+    Intercept = -0.2179
+    R² = 0.3703
+    Regression p-value = 0.001604
+    Slope Direction: POSITIVE (NNRD increases with timestep size)
+  
+  PEARSON CORRELATION:
+    r = 0.6085
+    p-value = 0.001604
+    Effect size: large
+    95% CI: [0.2719, 0.8125]
+    → REJECT H₀: Significant correlation found
+  
+  SPEARMAN CORRELATION (rank-based):
+    ρ = 0.7096
+    p-value = 0.000103
+    Effect size: very large
+    → REJECT H₀: Significant correlation found
+  
+  KENDALL'S TAU (rank-based):
+    τ = 0.5580
+    p-value = 0.000065
+    → REJECT H₀: Significant correlation found
+  --------------------------------------------------
+
+synth-coupled_gin_structFalse:
+  Data Points: 24
+  Timestep Range: (np.int64(4), np.int64(96))
+  NNRD Range: (0.1135, 0.1598)
+  
+  LINEAR REGRESSION:
+    Slope = 0.000044 ± 0.000090
+    Intercept = 0.1452
+    R² = 0.0109
+    Regression p-value = 0.627920
+    Slope Direction: POSITIVE (NNRD increases with timestep size)
+  
+  PEARSON CORRELATION:
+    r = 0.1042
+    p-value = 0.627920
+    Effect size: small
+    95% CI: [-0.3123, 0.4871]
+    → FAIL TO REJECT H₀: No significant correlation
+  
+  SPEARMAN CORRELATION (rank-based):
+    ρ = -0.0017
+    p-value = 0.993565
+    Effect size: negligible
+    → FAIL TO REJECT H₀: No significant correlation
+  
+  KENDALL'S TAU (rank-based):
+    τ = 0.0217
+    p-value = 0.902397
+    → FAIL TO REJECT H₀: No significant correlation
+  --------------------------------------------------
+
+================================================================================
+NOTES:
+- Slope units: NNRD change per unit timestep size
+- Positive slope: NNRD increases as timestep size increases
+- Negative slope: NNRD decreases as timestep size increases
+- Pearson r measures linear correlation
+- Spearman ρ measures monotonic correlation (rank-based)
+- Kendall τ is another rank-based correlation measure
+- Effect sizes: negligible (<0.1), small (0.1-0.3), medium (0.3-0.5),
+  large (0.5-0.7), very large (>0.7)
+================================================================================

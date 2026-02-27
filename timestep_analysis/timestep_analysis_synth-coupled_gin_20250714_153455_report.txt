@@ -1,0 +1,66 @@
+================================================================================
+TIMESTEP SENSITIVITY ANALYSIS REPORT
+================================================================================
+Dataset: synth-coupled
+Layer Type: gin
+Structure (Positional Encodings): False
+Bootstrap Samples: 3
+Analysis Date: 2025-07-14 15:36:16
+
+SUMMARY STATISTICS
+----------------------------------------
+Overall NNRD range: [0.1197, 0.1341]
+Mean standard deviation: 0.0072
+Stability (std of means): 0.0063
+Most stable timestep size: 5 (std = 0.0065)
+
+DETAILED RESULTS BY TIMESTEP SIZE
+----------------------------------------
+Timestep Size: 5
+  Successful runs: 3/3
+  Mean NNRD: 0.119688
+  Std Dev: 0.006490
+  Median: 0.121908
+  IQR: [0.116387, 0.124099]
+  Range: [0.110866, 0.126290]
+  Interpretation: Structure-biased
+
+Timestep Size: 10
+  Successful runs: 3/3
+  Mean NNRD: 0.123994
+  Std Dev: 0.008477
+  Median: 0.125007
+  IQR: [0.119075, 0.129419]
+  Range: [0.113143, 0.133832]
+  Interpretation: Structure-biased
+
+Timestep Size: 15
+  Successful runs: 3/3
+  Mean NNRD: 0.134133
+  Std Dev: 0.007051
+  Median: 0.135930
+  IQR: [0.130335, 0.138829]
+  Range: [0.124740, 0.141729]
+  Interpretation: Structure-biased
+
+Timestep Size: 20
+  Successful runs: 3/3
+  Mean NNRD: 0.133863
+  Std Dev: 0.006668
+  Median: 0.137359
+  IQR: [0.130945, 0.138529]
+  Range: [0.124531, 0.139699]
+  Interpretation: Structure-biased
+
+RECOMMENDATIONS
+----------------------------------------
+Top 3 most precise timestep sizes:
+  1. n=5 (std = 0.006490)
+  2. n=20 (std = 0.006668)
+  3. n=15 (std = 0.007051)
+
+Cost-effectiveness analysis:
+  n=5: precision=0.006490, efficiency=30.8179
+  n=10: precision=0.008477, efficiency=11.7971
+  n=15: precision=0.007051, efficiency=9.4549
+  n=20: precision=0.006668, efficiency=7.4989

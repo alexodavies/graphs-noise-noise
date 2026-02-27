@@ -1,0 +1,36 @@
+# Core ML
+torch
+torch_geometric
+torch_scatter
+torch_sparse
+
+# Scientific computing
+numpy
+scipy
+scikit-learn
+pandas
+
+# Graph libraries
+networkx
+ogb
+littleballoffur
+
+# Visualization
+matplotlib
+seaborn
+bokeh
+
+# Chemistry
+rdkit
+
+# Utilities
+tqdm
+PyYAML
+wget
+
+# Experiment tracking
+wandb
+
+# Dimensionality reduction
+umap-learn
+hdbscan

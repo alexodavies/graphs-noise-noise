@@ -1,0 +1,5 @@
+experiment,optimal_timestep,optimal_cv,optimal_mean_nnrd,suggested_range
+synth-coupled_gin_structFalse,13,0.03284348575799411,0.14475215123158267,"(np.int64(4), np.int64(5))"
+synth-feature_gin_structFalse,9,-0.04872498190806075,-0.2253186938078695,"(np.int64(10), np.int64(17))"
+synth-easy_gin_structFalse,17,-0.06321415738178925,-0.20541604713702152,"(np.int64(10), np.int64(14))"
+synth-structure_gin_structFalse,2,3.180902023494476e-05,0.34656149907348505,"(np.int64(10), np.int64(18))"

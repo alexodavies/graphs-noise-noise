@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import spearmanr
 import matplotlib.pyplot as plt
 
-def plot_results(result_dict, extra_save_string="", return_path = False):
+def plot_results(result_dict, extra_save_string="", return_path = False, default_xticks = False):
     fig, ax = plt.subplots(figsize=(4.5, 3))
     dataset = result_dict["dataset"]
     task_type = result_dict["task_type"]
@@ -25,6 +25,7 @@ def plot_results(result_dict, extra_save_string="", return_path = False):
     feat_means = [np.mean([float(val) for val in feats[str(t)]]) for t in ts]
     feat_devs = [np.std([float(val) for val in feats[str(t)]]) for t in ts]
 
+
     ax.fill_between(ts, struc_means, feat_means, color = "gray", alpha = 0.4)
 
     ax.errorbar(ts, struc_means, yerr=struc_devs, label="Structure", c = "black")
@@ -46,18 +47,22 @@ def plot_results(result_dict, extra_save_string="", return_path = False):
              length_includes_head = True, color = "black",
              head_width = head_length, head_length = head_length)
 
-    ax.annotate(f"$NNRD_e$:\n{np.around(nnd(result_dict, extremis=True), decimals = 3)}",
-                 xy = (1.05, nnrd_y_adjusted),
-                 color = "black", fontsize = 8)
+    # ax.annotate(f"$NNRD_e$:\n{np.around(nnd(result_dict, extremis=True), decimals = 3)}",
+    #              xy = (1.05, nnrd_y_adjusted),
+    #              color = "black", fontsize = 8)
     
     nnrd_root = min(np.min(np.array(struc_means) - np.array(struc_devs)), np.min(np.array(feat_means)-np.array(feat_devs)))
 
     ax.text(1.05, nnrd_root, f"$NNRD$:\n{np.around(nnd(result_dict), decimals = 3)}", 
         bbox=dict(facecolor='white', edgecolor='green', boxstyle='round'))
 
-    # Format x-axis ticks
-    ax.set_xticks(ts)  # Ensure all unique noise levels are shown
-    ax.set_xticklabels([f"{t:.1f}" for t in ts])  # Format as two decimal places
+    if not default_xticks:
+        # Format x-axis ticks
+        ax.set_xticks(ts)  # Ensure all unique noise levels are shown
+        ax.set_xticklabels([f"{t:.1f}" for t in ts])  # Format as two decimal places
+
+    else:
+        ax.set_xticks(np.linspace(0,1,11))
 
     ax.set_xlim([ts[0], 1.225])
 
@@ -90,26 +95,80 @@ def nncr(result_dict):
 
     return np.log10(nncr)
 
-def nnd(result_dict, extremis = False):
 
+# Old version, non-symmetric
+# def nnd(result_dict, extremis = False):
+
+#     dataset = result_dict["dataset"]
+#     task = result_dict["task_type"]
+#     strucs = result_dict["structure"]
+#     feats = result_dict["feature"]
+#     ts = list(strucs.keys())
+    
+#     struc_means = [np.mean([float(val) for val in strucs[str(t)]]) for t in ts]
+#     feat_means = [np.mean([float(val) for val in feats[str(t)]]) for t in ts]
+
+#     if extremis:
+#         struc_means = [struc_means[-1]]
+#         feat_means = [feat_means[-1]]
+#     if task == "classification":
+#         difference = np.array(feat_means) / np.array(struc_means)
+#     else:
+#         difference = np.array(struc_means) / np.array(feat_means)
+
+#     return np.log(np.sum(difference) / difference.shape[0])
+
+# Now symmetric!
+def nnd(result_dict, extremis=False):
     dataset = result_dict["dataset"]
     task = result_dict["task_type"]
     strucs = result_dict["structure"]
     feats = result_dict["feature"]
     ts = list(strucs.keys())
-    
+
     struc_means = [np.mean([float(val) for val in strucs[str(t)]]) for t in ts]
     feat_means = [np.mean([float(val) for val in feats[str(t)]]) for t in ts]
+
+    global_min = min(np.min(feat_means), np.min(struc_means))
+    global_max = max(np.max(feat_means), np.max(struc_means))
+
+    # if "classification" in task:
+    global_min = min(np.min(feat_means), np.min(struc_means))
+    feat_means -= global_min
+    struc_means -= global_min
+    global_max = max(np.max(feat_means), np.max(struc_means))
+    feat_means /= global_max
+    struc_means /= global_max
+
+
+    # else:
+    #     global_max = min(np.max(feat_means), np.max(struc_means))
+    #     feat_means -= global_max
+    #     struc_means -= global_max
+    #     global_min = min(np.min(feat_means), np.min(struc_means))
+    #     feat_means /= global_min
+    #     struc_means /= global_min
+
+    feat_means += 1
+    struc_means += 1
+
+    # print(struc_means, feat_means)
+
+
 
     if extremis:
         struc_means = [struc_means[-1]]
         feat_means = [feat_means[-1]]
-    if task == "classification":
-        difference = np.array(feat_means) / np.mean(struc_means)
-    else:
-        difference = np.mean(struc_means) / np.array(feat_means)
 
-    return np.log(np.sum(difference) / difference.shape[0])
+    # Symmetric transformation
+    if "classification" in task:
+        log_difference = np.log(np.array(feat_means) / np.array(struc_means))
+    else:
+        print(np.array(struc_means) / np.array(feat_means))
+        log_difference = np.log(np.array(struc_means) / np.array(feat_means))
+
+    return np.mean(log_difference)
+
 
 def minmax_performance_structure(result_dict):
     dataset = result_dict["dataset"]

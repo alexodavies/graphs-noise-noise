@@ -6,9 +6,10 @@ import networkx as nx
 from tqdm import tqdm
 from random import random
 from torch_geometric.data import Data, InMemoryDataset
-from torch_geometric.utils import to_networkx
+from torch_geometric.utils import to_networkx, erdos_renyi_graph, from_networkx, dense_to_sparse
 import networkx as nx
 import copy
+from noisenoise import erdos_renyi_from_data
 
 from noisenoise import add_noise_to_dataset
 
@@ -61,8 +62,8 @@ def noise_and_visualise(dataset):
     d0 = dataset[index_label_0]
     d1 = dataset[index_label_1]
     
-    g0 = pyg_to_networkx_connected(d0)
-    g1 = pyg_to_networkx_connected(d1)
+    g0 = to_networkx(d0)
+    g1 = to_networkx(d1)
     pos0 = nx.kamada_kawai_layout(g0)
     pos1 = nx.kamada_kawai_layout(g1)
 
@@ -76,6 +77,8 @@ def noise_and_visualise(dataset):
         g0 = to_networkx(d0_noisy, to_undirected=True)
         g1 = to_networkx(d1_noisy, to_undirected=True)
         
+        # axes[0,i].set_title(f"Nodes: {d0_noisy.num_nodes}, edges: {d0_noisy.num_edges}")
+        # axes[1,i].set_title(f"Nodes: {d1_noisy.num_nodes}, edges: {d1_noisy.num_edges}")
 
         nx.draw_networkx_edges(g0, pos = pos0, ax=axes[0, i], node_size=0, edge_color="gray")
         nx.draw_networkx_edges(g1, pos = pos1, ax=axes[1, i], node_size=0, edge_color="gray")
@@ -84,11 +87,11 @@ def noise_and_visualise(dataset):
         d0_feats = d0_noisy.x.numpy().flatten()
         d1_feats = d1_noisy.x.numpy().flatten()
 
-        axes[2, i].hist(d0_feats, bins=20, alpha=0.5, label='Class 0')
-        axes[2, i].hist(d1_feats, bins=20, alpha=0.5, label='Class 1')
+        axes[2, i].hist(d0_feats, bins=20, alpha=0.5, label='Class 0', histtype="stepfilled", edgecolor='black', linewidth=1.2)
+        axes[2, i].hist(d1_feats, bins=20, alpha=0.5, label='Class 1', histtype="stepfilled", edgecolor='black', linewidth=1.2)
 
-        axes[3, i].hist(get_degree_list(d0_noisy).numpy(), alpha=0.5, label='Class 0', bins = np.linspace(0,4,12))
-        axes[3, i].hist(get_degree_list(d1_noisy).numpy(), alpha=0.5, label='Class 1', bins = np.linspace(0,4,12))
+        axes[3, i].hist(get_degree_list(d0_noisy).numpy(), alpha=0.5, label='Class 0', bins = np.linspace(0,4,12), histtype="stepfilled", edgecolor='black', linewidth=1.2)
+        axes[3, i].hist(get_degree_list(d1_noisy).numpy(), alpha=0.5, label='Class 1', bins = np.linspace(0,4,12), histtype="stepfilled", edgecolor='black', linewidth=1.2)
 
         for ax in axes[:-1, i]:
             ax.set_xticks([])  # Remove x-axis ticks
@@ -100,8 +103,8 @@ def noise_and_visualise(dataset):
 
         # axes[2,i].set_axis_off()
 
-    axes[0,0].set_ylabel("Ladder Ring", rotation = "vertical")
-    axes[1,0].set_ylabel("Hex Grid", rotation = "vertical")
+    axes[0,0].set_ylabel("Erdos-Renyi", rotation = "vertical")
+    axes[1,0].set_ylabel("Ladder Ring", rotation = "vertical")
     axes[2,0].set_ylabel("Node Features", rotation = "vertical")
     axes[3,0].set_ylabel("Degrees", rotation = "vertical")
 
@@ -190,9 +193,27 @@ def generate_circular_ladder_graph(num_edges: int) -> Data:
     edge_index = torch.tensor(edges, dtype=torch.long).T
 
     # Create PyTorch Geometric Data object
-    data = Data(edge_index=edge_index)
+    data = Data(edge_index=edge_index, num_nodes = torch.max(torch.unique(edge_index)) + 1)
 
     return data
+
+# def generate_bimodal_nodes(data, mean=1, dev=1):
+#     """Attaches a specified normal distribution to the nodes of the input data."""
+#     n_nodes = data.num_nodes
+#     n_features = 5
+
+#     # Generate normal node features
+#     data.x = torch.randn(n_nodes, n_features) * dev + mean
+#     return data
+
+# def generate_bimodal_edges(data, mean=1, dev=1):
+#     """Attaches a specified normal distribution to the nodes of the input data."""
+#     n_edges = data.num_edges
+#     n_features = 5
+
+#     # Generate normal node features
+#     data.edge_attr = torch.randn(n_edges, n_features) * dev + mean
+#     return data
 
 def generate_bimodal_nodes(data, mean=1, dev=1):
     """Attaches a specified normal distribution to the nodes of the input data."""
@@ -200,7 +221,7 @@ def generate_bimodal_nodes(data, mean=1, dev=1):
     n_features = 5
 
     # Generate normal node features
-    data.x = torch.randn(n_nodes, n_features) * dev + mean
+    data.x = torch.ones(n_nodes, n_features) * mean #torch.randn(n_nodes, n_features) * dev + mean
     return data
 
 def generate_bimodal_edges(data, mean=1, dev=1):
@@ -209,7 +230,7 @@ def generate_bimodal_edges(data, mean=1, dev=1):
     n_features = 5
 
     # Generate normal node features
-    data.edge_attr = torch.randn(n_edges, n_features) * dev + mean
+    data.edge_attr = torch.ones(n_edges, n_features) * mean  # torch.randn(n_edges, n_features) * dev + mean
     return data
 
 
@@ -251,8 +272,12 @@ def generate_triangular_grid(resolution=3):
 
 
 
+
+
+
+
 class SyntheticDataset(InMemoryDataset):
-    def __init__(self, root, label_type, num_samples=8000, transform=None, pre_transform=None):
+    def __init__(self, root, label_type, num_samples=3200, transform=None, pre_transform=None):
         self.label_type = label_type
         self.num_samples = num_samples
         super(SyntheticDataset, self).__init__(root, transform, pre_transform)
@@ -287,24 +312,32 @@ class SyntheticDataset(InMemoryDataset):
             # resolution = np.random.randint(2, 4)
             # sphere_edges = 3 * 2 ** (2 * resolution) * 10  # Approximate edge count for sphere
             # triangle_resolution = int(np.round((np.sqrt(2 * sphere_edges / 3) - 1), decimals=0))  # Adjust for edges
-            width = np.random.randint(3, 4)
-            height = np.random.randint(3, 4)
+            # width = np.random.randint(2, 4)
+            # height = np.random.randint(2, 4)
 
-            num_edges = 3*width*height - (width+height+3)/2 + 2*(width + height)
-            # num_edges = int(2*np.random.randint(24,256))
+            # num_edges = 3*width*height - (width+height+3)/2 + 2*(width + height)
+            num_edges = int(2*np.random.randint(24,128))
+
+            # num_edges = 
 
             is_sphere = random() > 0.5
             structure_label = 1 if is_sphere else 0    
             feature_label = 1 if random() > 0.5 else 0
 
-            if is_sphere:
-                data = generate_hexagonal_grid_graph(width = width, height = height)
-            else:
-                data = generate_circular_ladder_graph(num_edges=num_edges)
 
-            # mean = 1 if random() > 0.5 else -1
+
+            # if is_sphere:
+            #     data = generate_hexagonal_grid_graph(width = width, height = height)
+            # else:
+            data = generate_circular_ladder_graph(num_edges=num_edges)
+
             data = generate_bimodal_nodes(data, mean=2*(feature_label-0.5))
             data = generate_bimodal_edges(data, mean=2*(feature_label-0.5))
+            if is_sphere:
+                data = erdos_renyi_from_data(data)
+
+            # mean = 1 if random() > 0.5 else -1
+
 
             data.y = torch.tensor([feature_label if is_feature else structure_label], dtype=torch.long)
             data_list.append(data)
@@ -321,7 +354,7 @@ class SyntheticDataset(InMemoryDataset):
     
 
 class SyntheticDouble(InMemoryDataset):
-    def __init__(self, root, label_type, num_samples=8000, transform=None, pre_transform=None):
+    def __init__(self, root, label_type, num_samples=3200, transform=None, pre_transform=None):
         self.label_type = label_type
         self.num_samples = num_samples
         super(SyntheticDouble, self).__init__(root, transform, pre_transform)
@@ -356,11 +389,11 @@ class SyntheticDouble(InMemoryDataset):
             # resolution = np.random.randint(2, 4)
             # sphere_edges = 3 * 2 ** (2 * resolution) * 10  # Approximate edge count for sphere
             # triangle_resolution = int(np.round((np.sqrt(2 * sphere_edges / 3) - 1), decimals=0))  # Adjust for edges
-            width = np.random.randint(2, 8)
-            height = np.random.randint(2, 8)
+            # width = np.random.randint(2, 8)
+            # height = np.random.randint(2, 8)
 
-            num_edges = 3*width*height - (width+height+3)/2 + 2*(width + height)
-            # num_edges = int(2*np.random.randint(24,256))
+            # num_edges = 3*width*height - (width+height+3)/2 + 2*(width + height)
+            num_edges = int(2*np.random.randint(24,128))
 
 
             if is_coupled:
@@ -382,14 +415,19 @@ class SyntheticDouble(InMemoryDataset):
             # structure_label = 1 if is_sphere else 0    
             # feature_label = 1 if random() > 0.5 else 0
 
-            if is_ladder:
-                data = generate_hexagonal_grid_graph(width = width, height = height)
-            else:
-                data = generate_circular_ladder_graph(num_edges=num_edges)
+            # if is_ladder:
+            #     data = generate_hexagonal_grid_graph(width = width, height = height)
+            # else:
+            #     data = generate_circular_ladder_graph(num_edges=num_edges)
 
-            # mean = 1 if random() > 0.5 else -1
+            data = generate_circular_ladder_graph(num_edges=num_edges)
             data = generate_bimodal_nodes(data, mean= -1 if is_neg_mean else 1)
             data = generate_bimodal_edges(data, mean= -1 if is_neg_mean else 1)
+            if not is_ladder:
+                data = erdos_renyi_from_data(data)
+
+            # mean = 1 if random() > 0.5 else -1
+
 
             data.y = torch.tensor(label, dtype=torch.long)
             data_list.append(data)
@@ -416,7 +454,7 @@ def visualize_graph(data, title="Graph Visualization"):
 
 if __name__ == "__main__":
     # Generate and load dataset
-    dataset = SyntheticDataset(root='data/synthetic', label_type="structure", num_samples=500)
+    dataset = SyntheticDouble(root='data/synthetic', label_type="easy", num_samples=8000)
     noise_and_visualise(dataset)
     # # Print dataset details
     # print(dataset)

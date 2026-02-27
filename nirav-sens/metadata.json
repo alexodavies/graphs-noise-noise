@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-12-22T21:31:39.472155",
+  "config": {
+    "layer_type": "gin",
+    "hidden_dim": 100,
+    "num_layers": 3,
+    "epochs": 25,
+    "n_noise_levels": 11,
+    "n_repeats": 5
+  },
+  "num_samples": 1600,
+  "analysis_repeats": 3
+}

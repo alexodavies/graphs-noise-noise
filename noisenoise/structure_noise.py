@@ -1,6 +1,6 @@
 import torch
-
 import random
+from torch_geometric.utils import dense_to_sparse
 
 def add_structure_noise_degree_preserving(data, t):
     """
@@ -97,6 +97,35 @@ def add_structure_noise_degree_preserving(data, t):
         # Stack the list of edge attributes into a tensor.
         data.edge_attr = torch.stack(new_edge_attr_list, dim=0)
 
+    return data
+
+def erdos_renyi_from_data(data):
+    """Generates a random graph with exactly the same number of edges as the input"""
+    n_nodes = data.num_nodes
+    n_edges = data.num_edges
+    
+    # Create an upper triangular random adjacency matrix
+    dense = torch.rand((n_nodes, n_nodes))
+    # dense = torch.triu(dense, diagonal=1)  # Upper triangular to avoid self-loops and duplicates
+    dense.triu = dense.tril().T
+    
+    # Flatten the upper triangular part and get the top n_edges indices
+    indices = torch.argsort(dense.flatten(), descending=True)[:n_edges]
+    
+    # Convert flat indices to 2D indices
+    row_indices, col_indices = torch.div(indices, n_nodes, rounding_mode='floor'), indices % n_nodes
+    
+    # Create edge index tensor
+    edge_index = torch.stack([row_indices, col_indices], dim=0)
+    
+    # Convert to bidirectional (undirected graph)
+    # edge_index = torch.cat([edge_index, edge_index.flip(0)], dim=1)
+    
+    data.edge_index = edge_index.to(torch.long)
+
+    if data.edge_index.shape[1] != data.edge_attr.shape[0]:
+        raise ValueError(f"edge attribute shape does not match {data.edge_attr.shape[0]} attributes for {data.edge_index.shape[1]} edges")
+    
     return data
 
 def add_structure_noise(data, t):

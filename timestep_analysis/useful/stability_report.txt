@@ -1,0 +1,51 @@
+================================================================================
+STABILITY ANALYSIS REPORT
+================================================================================
+
+synth-easy_gin_structFalse:
+  Overall Stability (CV): -0.057046
+  Score Range: 0.058520
+  Linear Trend (slope): 0.000281
+  Linear R²: 0.443
+  Spearman Correlation: 0.832
+  Average Within-Timestep Std: 0.005305
+  Max Plateau Length: 20
+  Timesteps Analyzed: 24
+
+synth-feature_gin_structFalse:
+  Overall Stability (CV): -0.052426
+  Score Range: 0.057220
+  Linear Trend (slope): 0.000237
+  Linear R²: 0.370
+  Spearman Correlation: 0.710
+  Average Within-Timestep Std: 0.005394
+  Max Plateau Length: 22
+  Timesteps Analyzed: 24
+
+synth-structure_gin_structFalse:
+  Overall Stability (CV): 0.037678
+  Score Range: 0.060925
+  Linear Trend (slope): -0.000231
+  Linear R²: 0.315
+  Spearman Correlation: -0.724
+  Average Within-Timestep Std: 0.007384
+  Max Plateau Length: 13
+  Timesteps Analyzed: 24
+
+synth-coupled_gin_structFalse:
+  Overall Stability (CV): 0.079690
+  Score Range: 0.046333
+  Linear Trend (slope): 0.000044
+  Linear R²: 0.011
+  Spearman Correlation: -0.002
+  Average Within-Timestep Std: 0.009712
+  Max Plateau Length: 12
+  Timesteps Analyzed: 24
+
+================================================================================
+INTERPRETATION:
+- Lower CV (Coefficient of Variation) = More stable
+- Lower |slope| = Less trend/more stable across timesteps
+- Higher Max Plateau Length = More stable regions
+- Lower Average Within-Timestep Std = More reproducible
+================================================================================

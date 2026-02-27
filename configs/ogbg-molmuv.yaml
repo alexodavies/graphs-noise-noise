@@ -1,0 +1,7 @@
+dataset: ogbg-molmuv
+layer_type: "gat"
+hidden_dim: 27
+num_layers: 3
+batch_size: 49
+epochs: 49
+lr: 0.002

@@ -1,1 +1,2 @@
 from .functions import add_noise_to_dataset, add_noise_to_graph, add_weighted_noise_to_dataset, add_weighted_noise_to_graph, compute_onehot_probabilities, compute_onehot_probabilities_edge, shuffle_categorical_feature_noise
+from .structure_noise import erdos_renyi_from_data
