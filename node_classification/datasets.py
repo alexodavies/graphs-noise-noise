@@ -1,16 +1,27 @@
 """
 Synthetic node classification datasets with degree-controlled graph construction.
 
+Structural signal: node degree ∈ {2, 4}
+Feature signal:    node feature x_i ∈ {0.5, 0.25}
+
+Design property: x_i × degree_i = 0.5×2 = 0.25×4 = 1 for every class-matched
+node. This means naive sum-aggregation cannot trivially combine both signals
+into a constant, making neither channel a pure free-ride shortcut.
+
 Four scenarios:
-  easy      - both x_i=y_i and degree encode the label
-  feature   - only x_i=y_i encodes the label; degrees are random from {1,4}
-  structure - only degree encodes the label; x_i is random from {0,1}
-  coupled   - label = XOR(a,b); x_i = a; degree determined by b (1 if b=0, 4 if b=1)
+  easy      - x = 0.5/0.25 and degree = 2/4 both encode y_i
+  feature   - x = 0.5/0.25 encodes y_i; degree random from {2, 4}
+  structure - x random from {0.5, 0.25}; degree = 2/4 encodes y_i
+  coupled   - a,b ~ Bern(0.5); y = 1[a==b]; x = 0.5 if a=0 else 0.25;
+              degree = 2 if b=0 else 4
+
+Note: with degrees {2, 4} the degree-sum is always even (both values are even),
+so no parity-fixing step is required.
 
 The dataset is stored as a plain list of Data objects in a single .pt file.
-On first use it is generated and saved; every subsequent load is a fast torch.load.
-Slicing returns a plain list, which makes copy.deepcopy (used during noise
-application) much faster than InMemoryDataset slices.
+On first use it is generated and saved; every subsequent load is a fast
+torch.load.  Slicing returns a plain list, making copy.deepcopy cheap during
+noise application.
 """
 
 import os
@@ -20,8 +31,13 @@ from torch_geometric.data import Data
 from tqdm import tqdm
 
 
+# Feature value assigned to each binary signal state
+_FEAT = {0: 0.5, 1: 0.25}   # class-0 → 0.5, class-1 → 0.25
+_DEG  = {0: 2,   1: 4}       # class-0 → degree 2, class-1 → degree 4
+
+
 # ---------------------------------------------------------------------------
-# Graph utilities
+# Graph builder
 # ---------------------------------------------------------------------------
 
 def build_degree_sequence_graph(degrees: list) -> Data:
@@ -31,7 +47,7 @@ def build_degree_sequence_graph(degrees: list) -> Data:
     Uses a greedy configuration model: creates one 'stub' per degree unit,
     then repeatedly shuffles and pairs stubs into edges, rejecting self-loops
     and multi-edges. Up to 20 passes are made; any remaining unpaired stubs
-    are silently dropped (in practice rare for balanced degree-1/4 mixes).
+    are silently dropped (rare for balanced degree-2/4 mixes).
     """
     n = len(degrees)
     stubs = [node_id for node_id, d in enumerate(degrees) for _ in range(d)]
@@ -69,17 +85,6 @@ def build_degree_sequence_graph(degrees: list) -> Data:
     )
 
 
-def _fix_degree_sum(degrees: list) -> list:
-    """
-    Ensure the sum of degrees is even (handshaking lemma).
-    If odd, flip one randomly-chosen node's degree between 1 and 4.
-    """
-    if sum(degrees) % 2 != 0:
-        idx = np.random.randint(len(degrees))
-        degrees[idx] = 4 if degrees[idx] == 1 else 1
-    return degrees
-
-
 # ---------------------------------------------------------------------------
 # Dataset
 # ---------------------------------------------------------------------------
@@ -88,13 +93,15 @@ class NodeClassificationDataset:
     """
     Synthetic node classification dataset backed by a plain list of Data objects.
 
+    Each graph has nodes with:
+      x         [num_nodes, 1]  float — 0.5 (class 0) or 0.25 (class 1) when signal present
+      y         [num_nodes, 1]  float — binary label {0, 1}
+      edge_attr [num_edges, 1]  float — dummy all-ones (for GIN/GPS compatibility)
+      edge_index               — built to match target degrees {2, 4}
+
     On first construction the graphs are generated and saved to
     ``{root}/{scenario}_n{num_samples}_nodes{min_nodes}-{max_nodes}.pt``.
-    Subsequent instantiations with the same parameters skip generation and
-    load directly from that file (fast torch.load).
-
-    Slicing returns a plain Python list, which makes copy.deepcopy cheap
-    during noise application.
+    Subsequent instantiations with the same parameters load from that file.
 
     Parameters
     ----------
@@ -105,7 +112,7 @@ class NodeClassificationDataset:
     num_samples : int
         Number of graphs to generate.
     min_nodes, max_nodes : int
-        Range of nodes per graph (sampled uniformly, rounded to even).
+        Range of nodes per graph (sampled uniformly, always even).
     """
 
     SCENARIOS = ("easy", "feature", "structure", "coupled")
@@ -153,53 +160,59 @@ class NodeClassificationDataset:
 
     def _assign_node_attributes(self, num_nodes: int):
         """
-        Return (x, y, degrees) arrays for each node.
+        Return (x_vals, y, degrees) for each node under the chosen scenario.
 
-        Scenario rules
-        --------------
-        easy:      y_i ~ Bern(0.5);  x_i = y_i;            degree = 1 if y=0 else 4
-        feature:   y_i ~ Bern(0.5);  x_i = y_i;            degree ~ Uniform({1,4})
-        structure: y_i ~ Bern(0.5);  x_i ~ Bern(0.5);      degree = 1 if y=0 else 4
-        coupled:   a,b ~ Bern(0.5);  y = 1[a==b];  x = a;  degree = 1 if b=0 else 4
+        Signal encoding
+        ---------------
+        Feature signal: x = 0.5 if class-0, 0.25 if class-1
+        Degree signal:  degree = 2 if class-0, 4 if class-1
+
+        Scenarios
+        ---------
+        easy:      y ~ Bern(0.5);  x encodes y;  degree encodes y
+        feature:   y ~ Bern(0.5);  x encodes y;  degree random from {2, 4}
+        structure: y ~ Bern(0.5);  x random from {0.5, 0.25};  degree encodes y
+        coupled:   a,b ~ Bern(0.5); y = 1[a==b]; x encodes a; degree encodes b
         """
         if self.scenario == "easy":
             y = np.random.randint(0, 2, size=num_nodes)
-            x = y.copy()
-            degrees = [1 if yi == 0 else 4 for yi in y]
+            x_vals = np.array([_FEAT[yi] for yi in y])
+            degrees = [_DEG[yi] for yi in y]
 
         elif self.scenario == "feature":
             y = np.random.randint(0, 2, size=num_nodes)
-            x = y.copy()
-            degrees = list(np.random.choice([1, 4], size=num_nodes))
+            x_vals = np.array([_FEAT[yi] for yi in y])
+            degrees = list(np.random.choice([2, 4], size=num_nodes))
 
         elif self.scenario == "structure":
             y = np.random.randint(0, 2, size=num_nodes)
-            x = np.random.randint(0, 2, size=num_nodes)
-            degrees = [1 if yi == 0 else 4 for yi in y]
+            x_signal = np.random.randint(0, 2, size=num_nodes)   # random, indep. of y
+            x_vals = np.array([_FEAT[xi] for xi in x_signal])
+            degrees = [_DEG[yi] for yi in y]
 
         elif self.scenario == "coupled":
             a = np.random.randint(0, 2, size=num_nodes)
             b = np.random.randint(0, 2, size=num_nodes)
             y = (a == b).astype(int)
-            x = a.copy()
-            degrees = [1 if bi == 0 else 4 for bi in b]
+            x_vals = np.array([_FEAT[ai] for ai in a])
+            degrees = [_DEG[bi] for bi in b]
 
-        degrees = _fix_degree_sum(list(degrees))
-        return x, y, degrees
+        # Degrees {2, 4} are both even → sum is always even; no parity fix needed.
+        return x_vals, y, degrees
 
     def _generate(self) -> list:
-        desc = f"Generating {self.scenario} (n={self.num_samples})"
         data_list = []
-        for _ in tqdm(range(self.num_samples), desc=desc):
+        for _ in tqdm(range(self.num_samples),
+                      desc=f"Generating {self.scenario} (n={self.num_samples})"):
             num_nodes = (
                 np.random.randint(self.min_nodes // 2, self.max_nodes // 2 + 1) * 2
             )
-            x, y, degrees = self._assign_node_attributes(num_nodes)
+            x_vals, y, degrees = self._assign_node_attributes(num_nodes)
 
             data = build_degree_sequence_graph(degrees)
             num_edges = data.edge_index.shape[1]
 
-            data.x = torch.tensor(x, dtype=torch.float).reshape(-1, 1)
+            data.x = torch.tensor(x_vals, dtype=torch.float).reshape(-1, 1)
             data.y = torch.tensor(y, dtype=torch.float).reshape(-1, 1)
             data.edge_attr = torch.ones(num_edges, 1, dtype=torch.float)
 

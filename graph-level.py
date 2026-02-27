@@ -29,7 +29,7 @@ def evaluate_dataset(args):
     # elif "TU" in dataset:
     #     project = "noise-TUDatasets"
 
-    project = "noise-ToP"
+    project = "noise-node-classification"
 
     use_linear = False  # TODO: fix code - currently being set to true by bash script
     pos_included_string = "-pos" if args.structure else ""
