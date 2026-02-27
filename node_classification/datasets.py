@@ -1,27 +1,37 @@
 """
-Synthetic node classification datasets with degree-controlled graph construction.
+Synthetic node classification datasets with triangle-based structural signal.
 
-Structural signal: node degree ∈ {2, 4}
-Feature signal:    node feature x_i ∈ {0.5, 0.25}
+Structural signal: whether a node is part of a triangle (3-clique).
+  Class 1 nodes → in a triangle
+  Class 0 nodes → in a cycle (no triangles)
 
-Design property: x_i × degree_i = 0.5×2 = 0.25×4 = 1 for every class-matched
-node. This means naive sum-aggregation cannot trivially combine both signals
-into a constant, making neither channel a pure free-ride shortcut.
+All nodes have degree exactly 2, so degree carries NO class information.
+
+Feature signal: x_i ∈ {0.5, 0.25}  (same values used in all scenarios)
+  0.5  encodes "signal state 0"
+  0.25 encodes "signal state 1"
 
 Four scenarios:
-  easy      - x = 0.5/0.25 and degree = 2/4 both encode y_i
-  feature   - x = 0.5/0.25 encodes y_i; degree random from {2, 4}
-  structure - x random from {0.5, 0.25}; degree = 2/4 encodes y_i
-  coupled   - a,b ~ Bern(0.5); y = 1[a==b]; x = 0.5 if a=0 else 0.25;
-              degree = 2 if b=0 else 4
+  easy      - x encodes y AND triangle membership encodes y
+  feature   - x encodes y; triangle membership is random (independent of y)
+  structure - x is random; triangle membership encodes y
+  coupled   - a,b ~ Bern(0.5) balanced; y = 1[a==b];
+              x = _FEAT[a]; triangle membership = (b==1)
 
-Note: with degrees {2, 4} the degree-sum is always even (both values are even),
-so no parity-fixing step is required.
+Construction guarantees
+-----------------------
+* num_nodes is sampled as a multiple of 6:
+    - n/2 nodes always go into triangles  (n/2 divisible by 3 → exact groups)
+    - n/2 nodes always go into one cycle  (length n/2 ≥ 4 → no self-triangles)
+* Classes (and structural assignments) are BALANCED: exactly n/2 per side.
+* a and b in the "coupled" scenario are independent balanced shuffles
+  of [0]*n/2 + [1]*n/2, guaranteeing sum(b==1)=n/2 divisible by 3.
 
-The dataset is stored as a plain list of Data objects in a single .pt file.
-On first use it is generated and saved; every subsequent load is a fast
-torch.load.  Slicing returns a plain list, making copy.deepcopy cheap during
-noise application.
+Cache
+-----
+Stored as a plain list of Data objects at
+  {root}/{scenario}_tri_n{num_samples}_nodes{min_nodes}-{max_nodes}.pt
+"_tri" distinguishes from older degree-based caches.
 """
 
 import os
@@ -31,58 +41,53 @@ from torch_geometric.data import Data
 from tqdm import tqdm
 
 
-# Feature value assigned to each binary signal state
-_FEAT = {0: 0.5, 1: 0.25}   # class-0 → 0.5, class-1 → 0.25
-_DEG  = {0: 2,   1: 4}       # class-0 → degree 2, class-1 → degree 4
+# Feature value for each binary signal state
+_FEAT = {0: 0.5, 1: 0.25}
 
 
 # ---------------------------------------------------------------------------
 # Graph builder
 # ---------------------------------------------------------------------------
 
-def build_degree_sequence_graph(degrees: list) -> Data:
+def build_triangle_and_cycle_graph(in_triangle: np.ndarray) -> Data:
     """
-    Build an undirected graph where node i has the specified degree.
+    Build a graph where:
+      - Nodes with in_triangle[i]=1 are grouped into triangles (3-cliques).
+      - Nodes with in_triangle[i]=0 form a single cycle.
 
-    Uses a greedy configuration model: creates one 'stub' per degree unit,
-    then repeatedly shuffles and pairs stubs into edges, rejecting self-loops
-    and multi-edges. Up to 20 passes are made; any remaining unpaired stubs
-    are silently dropped (rare for balanced degree-2/4 mixes).
+    All nodes end up with degree exactly 2.
+
+    Parameters
+    ----------
+    in_triangle : array of 0/1, length n
+        1 → node goes into a triangle group; 0 → node goes into the cycle.
+        Requires: sum(in_triangle) divisible by 3, sum(1-in_triangle) >= 4.
     """
-    n = len(degrees)
-    stubs = [node_id for node_id, d in enumerate(degrees) for _ in range(d)]
+    triangle_nodes = np.where(in_triangle == 1)[0]
+    cycle_nodes    = np.where(in_triangle == 0)[0]
 
-    edges: set = set()
-    for _ in range(20):
-        if len(stubs) < 2:
-            break
-        np.random.shuffle(stubs)
-        remaining = []
-        i = 0
-        while i + 1 < len(stubs):
-            u, v = stubs[i], stubs[i + 1]
-            e = (min(u, v), max(u, v))
-            if u != v and e not in edges:
-                edges.add(e)
-                i += 2
-            else:
-                remaining.append(stubs[i])
-                i += 1
-        if i < len(stubs):
-            remaining.append(stubs[i])
-        stubs = remaining
+    n_t = len(triangle_nodes)
+    n_c = len(cycle_nodes)
 
-    edge_list = []
-    for u, v in edges:
-        edge_list.extend([[u, v], [v, u]])
+    assert n_t % 3 == 0,  f"Triangle node count must be divisible by 3, got {n_t}"
+    assert n_c >= 4,       f"Cycle node count must be >= 4 to avoid self-triangles, got {n_c}"
 
-    if not edge_list:
-        edge_list = [[0, 1], [1, 0]]
+    edges = []
 
-    return Data(
-        edge_index=torch.tensor(edge_list, dtype=torch.long).T,
-        num_nodes=n,
-    )
+    # Class-1 / triangle nodes: form k = n_t//3 triangles
+    for k in range(n_t // 3):
+        a, b, c = triangle_nodes[3*k], triangle_nodes[3*k+1], triangle_nodes[3*k+2]
+        for u, v in [(a, b), (b, c), (a, c)]:
+            edges.extend([[int(u), int(v)], [int(v), int(u)]])
+
+    # Class-0 / cycle nodes: form one cycle of length n_c
+    for k in range(n_c):
+        u = cycle_nodes[k]
+        v = cycle_nodes[(k + 1) % n_c]
+        edges.extend([[int(u), int(v)], [int(v), int(u)]])
+
+    edge_index = torch.tensor(edges, dtype=torch.long).T
+    return Data(edge_index=edge_index, num_nodes=len(in_triangle))
 
 
 # ---------------------------------------------------------------------------
@@ -93,26 +98,23 @@ class NodeClassificationDataset:
     """
     Synthetic node classification dataset backed by a plain list of Data objects.
 
-    Each graph has nodes with:
-      x         [num_nodes, 1]  float — 0.5 (class 0) or 0.25 (class 1) when signal present
-      y         [num_nodes, 1]  float — binary label {0, 1}
-      edge_attr [num_edges, 1]  float — dummy all-ones (for GIN/GPS compatibility)
-      edge_index               — built to match target degrees {2, 4}
+    Each graph:
+      x         [num_nodes, 1]  float — 0.5 or 0.25
+      y         [num_nodes, 1]  float — binary label {0.0, 1.0}
+      edge_attr [num_edges, 1]  float — all-ones dummy (GIN/GPS compat.)
+      edge_index               — triangle + cycle structure (all degrees = 2)
 
-    On first construction the graphs are generated and saved to
-    ``{root}/{scenario}_n{num_samples}_nodes{min_nodes}-{max_nodes}.pt``.
-    Subsequent instantiations with the same parameters load from that file.
+    Saves to / loads from:
+      {root}/{scenario}_tri_n{num_samples}_nodes{min_nodes}-{max_nodes}.pt
 
     Parameters
     ----------
-    root : str
-        Directory for caching.  Created if it doesn't exist.
-    scenario : str
-        One of 'easy', 'feature', 'structure', 'coupled'.
-    num_samples : int
-        Number of graphs to generate.
-    min_nodes, max_nodes : int
-        Range of nodes per graph (sampled uniformly, always even).
+    root        Directory for caching (created if needed).
+    scenario    'easy' | 'feature' | 'structure' | 'coupled'
+    num_samples Number of graphs to generate.
+    min_nodes, max_nodes
+                Sampling range for graph size. Actual num_nodes is the
+                nearest multiple of 6 in [min_nodes, max_nodes].
     """
 
     SCENARIOS = ("easy", "feature", "structure", "coupled")
@@ -123,16 +125,16 @@ class NodeClassificationDataset:
             raise ValueError(
                 f"scenario must be one of {self.SCENARIOS}, got '{scenario}'"
             )
-        self.scenario = scenario
+        self.scenario    = scenario
         self.num_samples = num_samples
-        self.min_nodes = min_nodes
-        self.max_nodes = max_nodes
-        self.task_type = "classification"
-        self.num_node_features = 1
-        self.num_edge_features = 1
+        self.min_nodes   = min_nodes
+        self.max_nodes   = max_nodes
+        self.task_type          = "classification"
+        self.num_node_features  = 1
+        self.num_edge_features  = 1
 
         os.makedirs(root, exist_ok=True)
-        fname = f"{scenario}_n{num_samples}_nodes{min_nodes}-{max_nodes}.pt"
+        fname = f"{scenario}_tri_n{num_samples}_nodes{min_nodes}-{max_nodes}.pt"
         self._cache_path = os.path.join(root, fname)
 
         if os.path.exists(self._cache_path):
@@ -155,65 +157,73 @@ class NodeClassificationDataset:
         return iter(self._data)
 
     # ------------------------------------------------------------------
-    # Generation
+    # Generation helpers
     # ------------------------------------------------------------------
 
-    def _assign_node_attributes(self, num_nodes: int):
+    @staticmethod
+    def _balanced_shuffle(n):
+        """Return a randomly shuffled array of exactly n/2 zeros and n/2 ones."""
+        arr = np.array([0] * (n // 2) + [1] * (n // 2))
+        np.random.shuffle(arr)
+        return arr
+
+    def _assign_attributes(self, num_nodes: int):
         """
-        Return (x_vals, y, degrees) for each node under the chosen scenario.
+        Return (x_vals, y, in_triangle) for num_nodes nodes.
 
-        Signal encoding
-        ---------------
-        Feature signal: x = 0.5 if class-0, 0.25 if class-1
-        Degree signal:  degree = 2 if class-0, 4 if class-1
+        in_triangle[i] = 1  → node i is placed in a triangle (class-1 structure)
+        in_triangle[i] = 0  → node i is placed in the cycle  (class-0 structure)
 
-        Scenarios
-        ---------
-        easy:      y ~ Bern(0.5);  x encodes y;  degree encodes y
-        feature:   y ~ Bern(0.5);  x encodes y;  degree random from {2, 4}
-        structure: y ~ Bern(0.5);  x random from {0.5, 0.25};  degree encodes y
-        coupled:   a,b ~ Bern(0.5); y = 1[a==b]; x encodes a; degree encodes b
+        Scenario rules
+        --------------
+        easy:      y balanced-shuffled; x = _FEAT[y]; in_triangle = y
+        feature:   y balanced-shuffled; x = _FEAT[y]; in_triangle random (indep. of y)
+        structure: y balanced-shuffled; x = _FEAT[random, indep. of y]; in_triangle = y
+        coupled:   a, b independent balanced-shuffles; y = 1[a==b];
+                   x = _FEAT[a]; in_triangle = b
         """
         if self.scenario == "easy":
-            y = np.random.randint(0, 2, size=num_nodes)
-            x_vals = np.array([_FEAT[yi] for yi in y])
-            degrees = [_DEG[yi] for yi in y]
+            y           = self._balanced_shuffle(num_nodes)
+            in_triangle = y.copy()
+            x_vals      = np.array([_FEAT[yi] for yi in y])
 
         elif self.scenario == "feature":
-            y = np.random.randint(0, 2, size=num_nodes)
-            x_vals = np.array([_FEAT[yi] for yi in y])
-            degrees = list(np.random.choice([2, 4], size=num_nodes))
+            y           = self._balanced_shuffle(num_nodes)
+            in_triangle = self._balanced_shuffle(num_nodes)   # independent of y
+            x_vals      = np.array([_FEAT[yi] for yi in y])
 
         elif self.scenario == "structure":
-            y = np.random.randint(0, 2, size=num_nodes)
-            x_signal = np.random.randint(0, 2, size=num_nodes)   # random, indep. of y
-            x_vals = np.array([_FEAT[xi] for xi in x_signal])
-            degrees = [_DEG[yi] for yi in y]
+            y           = self._balanced_shuffle(num_nodes)
+            in_triangle = y.copy()
+            x_signal    = self._balanced_shuffle(num_nodes)   # independent of y
+            x_vals      = np.array([_FEAT[xi] for xi in x_signal])
 
         elif self.scenario == "coupled":
-            a = np.random.randint(0, 2, size=num_nodes)
-            b = np.random.randint(0, 2, size=num_nodes)
-            y = (a == b).astype(int)
-            x_vals = np.array([_FEAT[ai] for ai in a])
-            degrees = [_DEG[bi] for bi in b]
+            a           = self._balanced_shuffle(num_nodes)
+            b           = self._balanced_shuffle(num_nodes)
+            y           = (a == b).astype(int)
+            x_vals      = np.array([_FEAT[ai] for ai in a])
+            in_triangle = b.copy()
 
-        # Degrees {2, 4} are both even → sum is always even; no parity fix needed.
-        return x_vals, y, degrees
+        return x_vals, y, in_triangle
 
     def _generate(self) -> list:
+        # Smallest/largest multiple of 6 within [min_nodes, max_nodes]
+        lo = (self.min_nodes + 5) // 6   # ceil(min_nodes / 6)
+        hi = self.max_nodes // 6          # floor(max_nodes / 6)
+
         data_list = []
         for _ in tqdm(range(self.num_samples),
                       desc=f"Generating {self.scenario} (n={self.num_samples})"):
-            num_nodes = (
-                np.random.randint(self.min_nodes // 2, self.max_nodes // 2 + 1) * 2
-            )
-            x_vals, y, degrees = self._assign_node_attributes(num_nodes)
+            num_nodes = np.random.randint(lo, hi + 1) * 6
 
-            data = build_degree_sequence_graph(degrees)
+            x_vals, y, in_triangle = self._assign_attributes(num_nodes)
+
+            data = build_triangle_and_cycle_graph(in_triangle)
             num_edges = data.edge_index.shape[1]
 
-            data.x = torch.tensor(x_vals, dtype=torch.float).reshape(-1, 1)
-            data.y = torch.tensor(y, dtype=torch.float).reshape(-1, 1)
+            data.x         = torch.tensor(x_vals, dtype=torch.float).reshape(-1, 1)
+            data.y         = torch.tensor(y,      dtype=torch.float).reshape(-1, 1)
             data.edge_attr = torch.ones(num_edges, 1, dtype=torch.float)
 
             data_list.append(data)
@@ -222,6 +232,6 @@ class NodeClassificationDataset:
     def __repr__(self):
         return (
             f"NodeClassificationDataset(scenario={self.scenario}, "
-            f"n={self.num_samples}, nodes={self.min_nodes}-{self.max_nodes}, "
-            f"cached={os.path.exists(self._cache_path)})"
+            f"n={self.num_samples}, nodes={self.min_nodes}-{self.max_nodes} "
+            f"[multiples of 6], cached={os.path.exists(self._cache_path)})"
         )
