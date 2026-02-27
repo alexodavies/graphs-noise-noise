@@ -1,0 +1,161 @@
+================================================================================
+NNRD METRIC SENSITIVITY ANALYSIS REPORT
+================================================================================
+
+SUMMARY
+----------------------------------------
+
+Label Type: STRUCTURE
+
+  feature_dim:
+    Values tested: 5
+    Total samples: 15
+    Mean NNRD: 0.2211 ± 0.0049
+    CV (consistency): 0.0220
+    Range: 0.0147
+    Sign consistent: Yes
+    Correlation with param: 0.700 (p=0.1881)
+
+  graph_size:
+    Values tested: 4
+    Total samples: 12
+    Mean NNRD: 0.2242 ± 0.0016
+    CV (consistency): 0.0072
+    Range: 0.0040
+    Sign consistent: Yes
+
+
+Label Type: FEATURE
+
+  feature_dim:
+    Values tested: 5
+    Total samples: 15
+    Mean NNRD: -0.2158 ± 0.0034
+    CV (consistency): 0.0157
+    Range: 0.0102
+    Sign consistent: Yes
+    Correlation with param: 0.300 (p=0.6238)
+
+  graph_size:
+    Values tested: 4
+    Total samples: 12
+    Mean NNRD: -0.2164 ± 0.0023
+    CV (consistency): 0.0107
+    Range: 0.0058
+    Sign consistent: Yes
+
+  density:
+    Values tested: 5
+    Total samples: 15
+    Mean NNRD: -0.2158 ± 0.0026
+    CV (consistency): 0.0122
+    Range: 0.0079
+    Sign consistent: Yes
+    Correlation with param: -0.700 (p=0.1881)
+
+
+================================================================================
+STATISTICAL HYPOTHESIS TESTS
+================================================================================
+
+Test 1: One-sample t-test against zero
+  H0: NNRD = 0 (metric detects no bias)
+  Rejecting H0 confirms the metric detects a real structure/feature bias
+
+Test 2: Kruskal-Wallis test across parameter values
+  H0: NNRD is the same across all parameter values
+  Rejecting H0 means NNRD varies with the nuisance parameter (undesirable)
+
+Test 3: Levene's test for homogeneity of variance
+  H0: Variance is equal across parameter values
+  Rejecting H0 means variance changes with parameter (undesirable)
+
+structure/feature_dim:
+  t-test vs zero: t=45.678, p=0.0000 ***
+    -> NNRD is SIGNIFICANTLY different from zero
+  Kruskal-Wallis: H=1.567, p=0.8148 
+    -> NNRD does NOT vary significantly with feature_dim (metric is robust)
+  Levene's test: W=0.149, p=0.9592 
+    -> Variance is HOMOGENEOUS across parameter values
+
+structure/graph_size:
+  t-test vs zero: t=65.519, p=0.0000 ***
+    -> NNRD is SIGNIFICANTLY different from zero
+  Kruskal-Wallis: H=0.077, p=0.9945 
+    -> NNRD does NOT vary significantly with graph_size (metric is robust)
+  Levene's test: W=0.830, p=0.5136 
+    -> Variance is HOMOGENEOUS across parameter values
+
+feature/feature_dim:
+  t-test vs zero: t=-101.985, p=0.0000 ***
+    -> NNRD is SIGNIFICANTLY different from zero
+  Kruskal-Wallis: H=3.367, p=0.4984 
+    -> NNRD does NOT vary significantly with feature_dim (metric is robust)
+  Levene's test: W=0.587, p=0.6797 
+    -> Variance is HOMOGENEOUS across parameter values
+
+feature/graph_size:
+  t-test vs zero: t=-92.066, p=0.0000 ***
+    -> NNRD is SIGNIFICANTLY different from zero
+  Kruskal-Wallis: H=1.359, p=0.7152 
+    -> NNRD does NOT vary significantly with graph_size (metric is robust)
+  Levene's test: W=0.483, p=0.7035 
+    -> Variance is HOMOGENEOUS across parameter values
+
+feature/density:
+  t-test vs zero: t=-114.741, p=0.0000 ***
+    -> NNRD is SIGNIFICANTLY different from zero
+  Kruskal-Wallis: H=2.200, p=0.6990 
+    -> NNRD does NOT vary significantly with density (metric is robust)
+  Levene's test: W=1.082, p=0.4156 
+    -> Variance is HOMOGENEOUS across parameter values
+
+================================================================================
+INVARIANCE ASSESSMENT
+================================================================================
+
+Criteria for INVARIANCE (sign preservation):
+  - NNRD sign should remain consistent across parameter changes
+  - Structure-labelled data: expect NNRD > 0
+  - Feature-labelled data: expect NNRD < 0
+
+Criteria for CONSISTENCY (magnitude stability):
+  - CV < 0.3: High consistency
+  - CV 0.3-0.5: Moderate consistency
+  - CV > 0.5: Low consistency
+
+structure/feature_dim:
+  Invariance: PASS (expected=+, got=+, sign_consistent=True)
+  Consistency: HIGH (CV=0.022) [statistically supported]
+
+structure/graph_size:
+  Invariance: PASS (expected=+, got=+, sign_consistent=True)
+  Consistency: HIGH (CV=0.007) [statistically supported]
+
+feature/feature_dim:
+  Invariance: PASS (expected=-, got=-, sign_consistent=True)
+  Consistency: HIGH (CV=0.016) [statistically supported]
+
+feature/graph_size:
+  Invariance: PASS (expected=-, got=-, sign_consistent=True)
+  Consistency: HIGH (CV=0.011) [statistically supported]
+
+feature/density:
+  Invariance: PASS (expected=-, got=-, sign_consistent=True)
+  Consistency: HIGH (CV=0.012) [statistically supported]
+
+================================================================================
+INTERPRETATION
+================================================================================
+
+A robust NNRD metric should show:
+  1. Significant difference from zero (t-test p < 0.05)
+  2. NO significant variation with nuisance parameters (Kruskal-Wallis p >= 0.05)
+  3. Homogeneous variance across conditions (Levene p >= 0.05)
+  4. Correct sign for the label type (+ve for structure, -ve for feature)
+  5. Low coefficient of variation (CV < 0.3)
+
+- A robust metric should show:
+  1. Sign invariance: correct direction for all parameter values
+  2. Magnitude consistency: low CV across parameter changes
+================================================================================
