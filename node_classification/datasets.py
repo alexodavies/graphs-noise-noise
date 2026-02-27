@@ -6,14 +6,23 @@ Four scenarios:
   feature   - only x_i=y_i encodes the label; degrees are random from {1,4}
   structure - only degree encodes the label; x_i is random from {0,1}
   coupled   - label = XOR(a,b); x_i = a; degree determined by b (1 if b=0, 4 if b=1)
+
+The dataset is stored as a plain list of Data objects in a single .pt file.
+On first use it is generated and saved; every subsequent load is a fast torch.load.
+Slicing returns a plain list, which makes copy.deepcopy (used during noise
+application) much faster than InMemoryDataset slices.
 """
 
 import os
 import numpy as np
 import torch
-from torch_geometric.data import Data, InMemoryDataset
+from torch_geometric.data import Data
 from tqdm import tqdm
 
+
+# ---------------------------------------------------------------------------
+# Graph utilities
+# ---------------------------------------------------------------------------
 
 def build_degree_sequence_graph(degrees: list) -> Data:
     """
@@ -52,7 +61,6 @@ def build_degree_sequence_graph(degrees: list) -> Data:
         edge_list.extend([[u, v], [v, u]])
 
     if not edge_list:
-        # Degenerate fallback: at least one edge
         edge_list = [[0, 1], [1, 0]]
 
     return Data(
@@ -63,8 +71,8 @@ def build_degree_sequence_graph(degrees: list) -> Data:
 
 def _fix_degree_sum(degrees: list) -> list:
     """
-    Ensure the sum of degrees is even (required by the handshaking lemma).
-    If the sum is odd, flip one randomly-chosen node's degree between 1 and 4.
+    Ensure the sum of degrees is even (handshaking lemma).
+    If odd, flip one randomly-chosen node's degree between 1 and 4.
     """
     if sum(degrees) % 2 != 0:
         idx = np.random.randint(len(degrees))
@@ -72,32 +80,38 @@ def _fix_degree_sum(degrees: list) -> list:
     return degrees
 
 
-class NodeClassificationDataset(InMemoryDataset):
-    """
-    Synthetic node classification dataset.
+# ---------------------------------------------------------------------------
+# Dataset
+# ---------------------------------------------------------------------------
 
-    Each Data object is a single graph where every node carries:
-      - x:         [num_nodes, 1] float tensor — binary feature in {0.0, 1.0}
-      - y:         [num_nodes, 1] float tensor — binary label in {0.0, 1.0}
-      - edge_attr: [num_edges, 1] float tensor — dummy (all ones, for GIN/GPS compat.)
-      - edge_index: [2, num_edges] — undirected edges built to match target degrees
+class NodeClassificationDataset:
+    """
+    Synthetic node classification dataset backed by a plain list of Data objects.
+
+    On first construction the graphs are generated and saved to
+    ``{root}/{scenario}_n{num_samples}_nodes{min_nodes}-{max_nodes}.pt``.
+    Subsequent instantiations with the same parameters skip generation and
+    load directly from that file (fast torch.load).
+
+    Slicing returns a plain Python list, which makes copy.deepcopy cheap
+    during noise application.
 
     Parameters
     ----------
     root : str
-        Directory for caching processed data.
+        Directory for caching.  Created if it doesn't exist.
     scenario : str
         One of 'easy', 'feature', 'structure', 'coupled'.
     num_samples : int
         Number of graphs to generate.
     min_nodes, max_nodes : int
-        Range for number of nodes per graph (will be rounded to nearest even number).
+        Range of nodes per graph (sampled uniformly, rounded to even).
     """
 
     SCENARIOS = ("easy", "feature", "structure", "coupled")
 
-    def __init__(self, root, scenario, num_samples=2000,
-                 min_nodes=20, max_nodes=100, transform=None, pre_transform=None):
+    def __init__(self, root="data/node_classification", scenario="easy",
+                 num_samples=2000, min_nodes=20, max_nodes=100):
         if scenario not in self.SCENARIOS:
             raise ValueError(
                 f"scenario must be one of {self.SCENARIOS}, got '{scenario}'"
@@ -106,41 +120,47 @@ class NodeClassificationDataset(InMemoryDataset):
         self.num_samples = num_samples
         self.min_nodes = min_nodes
         self.max_nodes = max_nodes
-        self._config_id = (
-            f"{scenario}_n{num_samples}_nodes{min_nodes}-{max_nodes}"
-        )
-        super().__init__(root, transform, pre_transform)
-
-        os.makedirs(self.processed_dir, exist_ok=True)
-        if not os.path.exists(self.processed_paths[0]):
-            self.process()
-
         self.task_type = "classification"
-        self.data, self.slices = torch.load(
-            self.processed_paths[0], weights_only=False
-        )
+        self.num_node_features = 1
+        self.num_edge_features = 1
 
-    @property
-    def raw_file_names(self):
-        return []
+        os.makedirs(root, exist_ok=True)
+        fname = f"{scenario}_n{num_samples}_nodes{min_nodes}-{max_nodes}.pt"
+        self._cache_path = os.path.join(root, fname)
 
-    @property
-    def processed_file_names(self):
-        return [f"data_{self._config_id}.pt"]
+        if os.path.exists(self._cache_path):
+            self._data = torch.load(self._cache_path, weights_only=False)
+        else:
+            self._data = self._generate()
+            torch.save(self._data, self._cache_path)
 
-    def process(self):
-        self._generate_data()
+    # ------------------------------------------------------------------
+    # Sequence protocol — slicing returns a plain list (cheap to deepcopy)
+    # ------------------------------------------------------------------
+
+    def __len__(self):
+        return len(self._data)
+
+    def __getitem__(self, idx):
+        return self._data[idx]
+
+    def __iter__(self):
+        return iter(self._data)
+
+    # ------------------------------------------------------------------
+    # Generation
+    # ------------------------------------------------------------------
 
     def _assign_node_attributes(self, num_nodes: int):
         """
-        Return (x, y, degrees) arrays for `num_nodes` nodes according to the scenario.
+        Return (x, y, degrees) arrays for each node.
 
         Scenario rules
         --------------
-        easy:      y_i ~ Bern(0.5);  x_i = y_i;   degree = 1 if y_i=0 else 4
-        feature:   y_i ~ Bern(0.5);  x_i = y_i;   degree ~ Uniform({1, 4})
-        structure: y_i ~ Bern(0.5);  x_i ~ Bern(0.5);  degree = 1 if y_i=0 else 4
-        coupled:   a,b ~ Bern(0.5);  y_i = 1[a==b];  x_i = a;  degree = 1 if b=0 else 4
+        easy:      y_i ~ Bern(0.5);  x_i = y_i;            degree = 1 if y=0 else 4
+        feature:   y_i ~ Bern(0.5);  x_i = y_i;            degree ~ Uniform({1,4})
+        structure: y_i ~ Bern(0.5);  x_i ~ Bern(0.5);      degree = 1 if y=0 else 4
+        coupled:   a,b ~ Bern(0.5);  y = 1[a==b];  x = a;  degree = 1 if b=0 else 4
         """
         if self.scenario == "easy":
             y = np.random.randint(0, 2, size=num_nodes)
@@ -167,14 +187,13 @@ class NodeClassificationDataset(InMemoryDataset):
         degrees = _fix_degree_sum(list(degrees))
         return x, y, degrees
 
-    def _generate_data(self):
+    def _generate(self) -> list:
+        desc = f"Generating {self.scenario} (n={self.num_samples})"
         data_list = []
-        for _ in tqdm(range(self.num_samples), desc=f"Generating {self._config_id}"):
-            # Sample an even node count so degree sums stay manageable
+        for _ in tqdm(range(self.num_samples), desc=desc):
             num_nodes = (
                 np.random.randint(self.min_nodes // 2, self.max_nodes // 2 + 1) * 2
             )
-
             x, y, degrees = self._assign_node_attributes(num_nodes)
 
             data = build_degree_sequence_graph(degrees)
@@ -182,14 +201,14 @@ class NodeClassificationDataset(InMemoryDataset):
 
             data.x = torch.tensor(x, dtype=torch.float).reshape(-1, 1)
             data.y = torch.tensor(y, dtype=torch.float).reshape(-1, 1)
-            # Dummy edge features (all ones) for GIN/GPS compatibility
             data.edge_attr = torch.ones(num_edges, 1, dtype=torch.float)
 
             data_list.append(data)
-
-        self.data, self.slices = self.collate(data_list)
-        os.makedirs(self.processed_dir, exist_ok=True)
-        torch.save((self.data, self.slices), self.processed_paths[0])
+        return data_list
 
     def __repr__(self):
-        return f"NodeClassificationDataset({self._config_id})"
+        return (
+            f"NodeClassificationDataset(scenario={self.scenario}, "
+            f"n={self.num_samples}, nodes={self.min_nodes}-{self.max_nodes}, "
+            f"cached={os.path.exists(self._cache_path)})"
+        )
