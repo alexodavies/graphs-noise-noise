@@ -66,7 +66,7 @@ def run_scenario(scenario: str, args: argparse.Namespace) -> dict:
 
     run_name = f"node-{scenario}-{args.layer_type}-ER-swapping"
     wandb.init(
-        project="noise-ToP",
+        project="noise-node-classification",
         entity="hierarchical-diffusion",
         name=run_name,
         config=vars(args),
